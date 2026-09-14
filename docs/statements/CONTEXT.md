@@ -5,9 +5,9 @@ The shared language for the statements feature in this fork. This file is a
 
 ## Terms
 
-- **Statement** — a PDF account statement published by an institution (the owner's
-  banks label it a *relevé*; the code and docs call it a statement). One file may
-  describe more than one account or product.
+- **Statement** — a PDF account statement published by an institution (the
+  owner's banks label it a _relevé_; the code and docs call it a statement). One
+  file may describe more than one account or product.
 
 - **Statement line** — a single dated row within a statement: a description, an
   amount and (usually) a running balance. A statement line is not yet an
@@ -27,8 +27,8 @@ The shared language for the statements feature in this fork. This file is a
 - **Expense** — an activity of type `WITHDRAWAL` that has been assigned to the
   `expense` taxonomy. It is not a distinct activity type.
 
-- **Income** — money in, represented as a `DEPOSIT` (or `CREDIT`) and assigned to
-  the `income` taxonomy.
+- **Income** — money in, represented as a `DEPOSIT` (or `CREDIT`) and assigned
+  to the `income` taxonomy.
 
 - **Transfer pair** — two activities that move money between two accounts the
   owner owns: a `TRANSFER_OUT` on the source and a `TRANSFER_IN` on the
@@ -41,8 +41,8 @@ The shared language for the statements feature in this fork. This file is a
 
 - **Import hash** — a deterministic fingerprint of a statement line's content,
   used to recognise the same line across two downloads of the same statement so
-  a re-import creates no duplicate. It is a property of the transaction, never of
-  the file or the download.
+  a re-import creates no duplicate. It is a property of the transaction, never
+  of the file or the download.
 
 - **Idempotency key** — the value Wealthfolio stores to enforce that an import
   hash is inserted at most once.

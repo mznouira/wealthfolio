@@ -11,8 +11,8 @@ Rules:
 - "Verify it renders correctly" is not an item.
 - Order by risk, not by feature. Say plainly when a known past failure makes an
   item likely.
-- If a change can capture a terminal, screen, or focus, the **first** item is how
-  to leave it and how to recover if leaving fails.
+- If a change can capture a terminal, screen, or focus, the **first** item is
+  how to leave it and how to recover if leaving fails.
 - When a manual item later becomes automatable, delete it and name the test that
   replaced it.
 

@@ -1,9 +1,9 @@
 # AGENTS.md — statements fork protocol
 
-Working agreement for anyone (human or agent) changing the **statements** feature
-in this Wealthfolio fork. Upstream's own [`/AGENTS.md`](../../AGENTS.md) is the
-general repo guide and still applies; this file adds the rules specific to our
-fork and this feature.
+Working agreement for anyone (human or agent) changing the **statements**
+feature in this Wealthfolio fork. Upstream's own [`/AGENTS.md`](../../AGENTS.md)
+is the general repo guide and still applies; this file adds the rules specific
+to our fork and this feature.
 
 Canonical plan: [`PLAN.md`](PLAN.md). Vocabulary: [`CONTEXT.md`](CONTEXT.md).
 
@@ -30,8 +30,8 @@ The repo is public, and so is upstream.
 
 - **Never commit a real statement, account number, or balance.**
 - Derive a parser from a real file, then write a **synthetic** fixture from the
-  shape and delete the real file. Same procedure that produced portage's verified
-  Desjardins layout.
+  shape and delete the real file. Same procedure that produced portage's
+  verified Desjardins layout.
 - Keep downloaded statements in a local `statements/` folder, which is
   gitignored, or outside the repo entirely.
 
