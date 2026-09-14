@@ -70,7 +70,7 @@ can pick the work up with no other context.
 | WP   | Title                                                                   | Status          | Depends on         |
 | ---- | ----------------------------------------------------------------------- | --------------- | ------------------ |
 | WP-0 | Fork bootstrap + persist docs                                           | **in progress** | —                  |
-| WP-1 | Parser core package (port from portage) + spike notes                   | pending         | WP-0               |
+| WP-1 | Parser core package (port from portage) + spike notes                   | **done**        | WP-0               |
 | WP-2 | PDF → positioned text (`pdfjs-dist`)                                    | pending         | WP-1               |
 | WP-3 | Desjardins deposit statement parser + reconciliation                    | pending         | WP-2               |
 | WP-4 | Wealthfolio import integration (frontend)                               | pending         | WP-3               |
@@ -88,7 +88,7 @@ can pick the work up with no other context.
 - [x] Persist `docs/statements/` (this plan, glossary, protocol, manual tests)
       and the `statements` skill.
 - [ ] Rust toolchain + Tauri system deps (blocked on sudo; see §8).
-- [ ] Locate and document the activity/CSV import feature and its interfaces.
+- [x] Locate and document the activity/CSV import feature and its interfaces.
 
 ### WP-1 — Parser core + spike
 
@@ -185,8 +185,9 @@ Checked 2026-09-13 on Omarchy/Arch:
 ## 9. Open questions / risks
 
 - Wealthfolio sign and spending semantics for `CREDIT_CARD` accounts (WP-1
-  spike).
-- Exact location/interfaces of the activity/CSV import feature (WP-1).
+  spike) — **resolved (WP-1)**: `NOTES.md` S1.
+- Exact location/interfaces of the activity/CSV import feature (WP-1) —
+  **resolved (WP-1)**: `NOTES.md` S1 + WP-4 note.
 - `pdfjs-dist` worker bundling under Vite/Tauri settings (WP-2).
 - French dates + wrapped descriptions + one file carrying several products
   (WP-3).
@@ -205,3 +206,20 @@ Checked 2026-09-13 on Omarchy/Arch:
   Tauri deps (with the owner, needs sudo), then WP-1 (port the parser core from
   portage and write the spike notes). **Broken/blocked:** Rust and
   `libappindicator-gtk3` not installed.
+- **2026-09-14** — WP-1 done: parser core ported to
+  `packages/statement-parsers/` (8 modules + `sha256.ts` + trimmed barrel),
+  Desjardins source converted to bytes-based `StatementSource`, 84 tests across
+  6 test files, reconciliation hard gate green, 10 synthetic fixtures ported
+  byte-for-byte (spec said 9; portage held 10); dropped portage's "missing file
+  rejects" test because A2 removed path I/O; one CP1252 test row adapted from 13
+  to 14 fields to match the verified layout. `docs/statements/NOTES.md` written
+  (S1–S3 + WP-4 consumption note), `PLAN.md` updated. Root test gate wired
+  (`package.json` test script + `.prettierignore` fixture-dir exclusion).
+  `MANUAL-TESTS.md`: no additions — WP-1 has no UI / real-PDF / folder-intake
+  surface. **Next:** WP-2 (pdfjs-dist → positioned text). **Broken/blocked:**
+  pre-existing frontend test debt — 29 deterministic failures
+  (`window.localStorage` undefined in jsdom: performance-page 14,
+  holdings-toolbar-order 7, spending-insights-page 8) plus variable timeout
+  flake (total fluctuates 33–44 across runs); verified pre-existing at `69fedca`
+  via baseline worktree rerun; environmental, needs its own ticket. Rust
+  toolchain still absent.
