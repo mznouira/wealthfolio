@@ -20,7 +20,7 @@
     "hooks:install": "git config core.hooksPath .githooks",
     "preview": "pnpm --filter frontend preview",
     "tauri": "tauri",
-    "test": "pnpm --filter frontend test && node --test scripts/__tests__/",
+    "test": "pnpm --filter frontend test && pnpm --filter @wealthfolio/statement-parsers test && node --test scripts/__tests__/",
     "test:opencode": "node --test scripts/__tests__/",
     "opencode:drive": "node scripts/opencode-driver.mjs",
     "opencode:schedule": "node scripts/opencode-scheduler.mjs",

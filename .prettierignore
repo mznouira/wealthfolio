@@ -44,6 +44,9 @@ pnpm-lock.yaml
 package-lock.json
 yarn.lock
 
+# Statement parser fixtures (byte-sensitive test data + portage-attested docs)
+packages/statement-parsers/tests/fixtures/
+
 # Binary/compiled files
 *.a
 *.so
