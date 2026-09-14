@@ -121,3 +121,6 @@ apps/tauri/db/
 tasks
 **/*.local.md
 wealthfolio.db
+
+# Statements (fork) — local downloaded statements are never committed
+/statements/
