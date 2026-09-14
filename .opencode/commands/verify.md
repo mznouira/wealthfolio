@@ -4,8 +4,8 @@ agent: tester
 subtask: true
 ---
 
-Run the verification ladder and report results verbatim. Stop at the first
-failure unless asked otherwise.
+Follow the `verification` skill. Run the ladder and report results verbatim.
+Stop at the first failure unless asked otherwise.
 
 1. `pnpm format:check`
 2. `pnpm lint:quiet`

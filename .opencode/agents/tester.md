@@ -41,6 +41,7 @@ For frontend behavior changes, also run `pnpm test:e2e`.
 
 ## Rules
 
+- Follow the `verification` skill for the canonical ladder.
 - Report failures verbatim with file:line and the exact repro command.
 - Never weaken a test to make it pass. If a test is wrong, say why.
 - Write tests only when the brief asks for them.

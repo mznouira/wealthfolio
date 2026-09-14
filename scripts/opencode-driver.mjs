@@ -175,6 +175,7 @@ async function main() {
     process.exit(2);
   }
 
+  const model = opts.model ? parseModel(opts.model) : null;
   const headers = authHeaders();
   let server = null;
   let baseUrl = opts.server;
@@ -226,7 +227,7 @@ async function main() {
       agent: opts.agent,
       parts: [{ type: "text", text: prompt }],
     };
-    if (opts.model) body.model = parseModel(opts.model);
+    if (model) body.model = model;
 
     const result = await request(
       baseUrl,
