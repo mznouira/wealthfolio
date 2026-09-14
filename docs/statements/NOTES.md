@@ -141,6 +141,69 @@ Input for WP-6 and v1 intake design.
   a custom Rust command, or avoid the need entirely. Recommendation for v1:
   avoid; rely on HTML5 drag-and-drop and the Rust watcher.
 
+## S4 — Real Desjardins deposit-statement geometry (input for WP-3)
+
+Owner-run 2026-09-14 via the WP-2 probe (MANUAL-TESTS item 4): a real 2026-01
+EOP statement, 2 pages, 106 reconstructed lines. Evidence below is geometry and
+format only — no names, folios, account numbers, balances, or payees. The sample
+stays local in the gitignored `/statements/` folder for the WP-3 session; delete
+it once the synthetic fixture is re-derived (privacy protocol §2).
+
+Structure (page 1):
+
+- ~12 letterhead lines: institution block, `RELEVÉ DE COMPTE`, period line
+  (`Pour la période du 1er janvier au 31 janvier 2026` — the year source for
+  `D MON` dates), 6-digit folio, `Page N de M`, account ref `SJ ###-#####-#`,
+  owner block, `EOP` + `COMPTE D'OPÉRATIONS COURANTES`.
+- Table header (7 cells, labels identical to the WP-2 generator): Date x=56.00 ·
+  Code x=83.60 · Description x=196.45 · Frais x=338.20 · Retrait x=387.80 ·
+  Dépôt x=461.05 · Solde x=533.45.
+- Opening row `Solde reporté` (mixed case; the generator says `SOLDE REPORTÉ`)
+  at description x≈107.85 + solde amount.
+
+Body geometry vs the synthetic generator:
+
+| quantity           | real (2026-01 EOP)              | synthetic      |
+| ------------------ | ------------------------------- | -------------- |
+| row pitch          | 11.95                           | 14             |
+| date x             | ≈58.65                          | 40             |
+| code x             | immediately after date (merges) | 90 (50 pt gap) |
+| description x      | ≈107.85                         | 130            |
+| frais right edge   | ≈353 (inferred from header)     | 350            |
+| retrait right edge | ≈420                            | 420            |
+| dépôt right edge   | ≈490                            | 490            |
+| solde right edge   | ≈560.75                         | 565            |
+
+Money columns are nearly exact; text columns and pitch are not — the generator
+needs re-derivation (WP-3).
+
+Formats:
+
+- Amounts: **period** decimals, space thousands (`2 485.06`). The generator
+  emits comma decimals (`45,67`) — switch both generator and parser to periods.
+- Dates: `D MON` (`1 JAN`), French month abbreviations, year taken from the
+  period line. The generator emits ISO `2025-01-02`.
+- Codes: 2–3 uppercase letters (observed: `VWW`, `DI`, `PWW`, `RA`).
+- Description patterns: `Virement - AccèsD Internet / à|de <6-digit folio> EOP`
+  (transfer counterpart — transfer-pair material), `Paie / <employer>`,
+  `Paiement facture - AccèsD Internet / <merchant>`,
+  `Retrait direct / <institution>`, `Prêt / <lender>`.
+
+Reconstruction behaviour at current tolerances (`src/pdf/lines.ts`):
+
+- Date+code always merge into one cell (real gap ≪ split tolerance).
+- Description additionally merges when the code is 3 letters (smaller
+  code→description gap); splits with 2-letter codes. → WP-3 must split
+  date/code/description by content (regex), not geometry — or tune the
+  tolerance; decide in WP-3.
+- Amounts always land in separate, correct columns; right-alignment preserved
+  (longer amounts start further left).
+
+Not yet observed (the probe table shows only the first 25 lines): page-2 header
+repeat, wrapped-description continuations, frais body values, closing row, font
+size, exact page size (Letter 612×792 assumed from y-max 771.95). The WP-3
+session measures these from the local sample, then deletes it.
+
 ## WP-4 — Consumption pattern for packages/statement-parsers
 
 The frontend will consume `packages/statement-parsers` the same way it consumes

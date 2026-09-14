@@ -119,6 +119,9 @@ Sections/products `EOP`, `ET`, `CS`, `ES`; columns
 `Date | Code | Description | Frais | Retrait | Dépôt | Solde`; wrapped
 descriptions; `Solde reporté` opening line. **Reconciliation gate per product.**
 Golden tests; cross-check against the CSV parser where the same month exists.
+Real-sample geometry recorded 2026-09-14 (owner-run, 2026-01 EOP): see NOTES §S4
+— period decimals, `D MON` dates, date+code cell merging, pitch 11.95; sample
+kept locally in `/statements/` for this session.
 
 ### WP-4 — Wealthfolio import integration
 
@@ -279,3 +282,13 @@ Checked 2026-09-13 on Omarchy/Arch; Rust updated 2026-09-14:
   `use-global-event-listener.ts`), untouched by the branch. **Next:** WP-3
   (Desjardins deposit parser + reconciliation; unblocked — item 4's real
   geometry still valuable when available). **Broken/blocked:** none.
+- **2026-09-14 (item 4, real sample)** — MANUAL-TESTS WP-2 item 4 run: pass. A
+  real 2026-01 EOP statement reconstructs: 7-cell header found, amounts in
+  correct right-aligned columns, opening `Solde reporté` row correct. Geometry +
+  format evidence recorded PII-free in NOTES §S4 (key deltas vs the generator:
+  period decimals, `D MON` dates, date+code cell merging, pitch 11.95,
+  text-column x positions; money right edges nearly exact). The sample was
+  briefly placed in `docs/statements/` (tracked tree) by mistake — untracked
+  throughout, no leak; moved to gitignored `/statements/` and retained there as
+  WP-3 input; delete after WP-3 re-derives the synthetic fixture. **Next:** WP-3
+  with real-sample evidence in hand. **Broken/blocked:** none.

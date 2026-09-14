@@ -93,7 +93,12 @@ browser.
 3. Pass after one-time `.env.web` setup (see amended command above) — badge
    `worker-port`; same 54-line output; second import OK. The initial failure was
    environmental (missing server secret key), not a WP-2 defect.
-4. Pending — owner runs next; geometry evidence feeds WP-3 tolerance tuning.
+4. Pass — real 2026-01 EOP sample; rows reconstruct with plausible columns
+   (amounts in correct right-aligned columns; opening `Solde reporté` row).
+   Date+code(+description) cells merge at current tolerances — expected finding;
+   geometry recorded PII-free in NOTES §S4 for WP-3 tuning. Sample retained in
+   gitignored `/statements/` for the WP-3 session; delete after the synthetic
+   fixture is re-derived.
 
 ---
 
