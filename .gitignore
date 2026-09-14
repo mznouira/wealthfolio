@@ -115,6 +115,7 @@ Thumbs.db
 .codex/
 .kiro/
 .conductor/
+.worktrees/
 db/
 apps/db/
 apps/tauri/db/

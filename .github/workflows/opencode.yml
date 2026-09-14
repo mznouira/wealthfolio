@@ -1,0 +1,75 @@
+name: opencode
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: Prompt for OpenCode
+        required: true
+        type: string
+      model:
+        description: provider/model (defaults to repository variable OPENCODE_MODEL)
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group:
+    ${{ github.workflow }}-${{ github.event.issue.number || github.event.pull_request.number ||
+    github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  comment:
+    name: Comment trigger
+    if: |
+      github.event_name != 'workflow_dispatch' &&
+      (contains(github.event.comment.body, '/oc') || contains(github.event.comment.body, '/opencode'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run OpenCode
+        uses: anomalyco/opencode/github@latest
+        env:
+          # Set the key for your provider as a repository secret.
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: ${{ vars.OPENCODE_MODEL || 'anthropic/claude-sonnet-4-5' }}
+          use_github_token: true
+
+  dispatch:
+    name: Manual trigger
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run OpenCode
+        uses: anomalyco/opencode/github@latest
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          model: ${{ inputs.model || vars.OPENCODE_MODEL || 'anthropic/claude-sonnet-4-5' }}
+          prompt: ${{ inputs.prompt }}
+          use_github_token: true
