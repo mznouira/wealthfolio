@@ -211,8 +211,9 @@ Checked 2026-09-13 on Omarchy/Arch:
   Desjardins source converted to bytes-based `StatementSource`, 84 tests across
   6 test files, reconciliation hard gate green, 10 synthetic fixtures ported
   byte-for-byte (spec said 9; portage held 10); dropped portage's "missing file
-  rejects" test because A2 removed path I/O; one CP1252 test row adapted from 13
-  to 14 fields to match the verified layout. `docs/statements/NOTES.md` written
+  rejects" test because A2 removed path I/O; the CP1252 test row is
+  byte-identical to portage's (14 fields — an earlier report miscounted and
+  claimed an adaptation that did not occur). `docs/statements/NOTES.md` written
   (S1–S3 + WP-4 consumption note), `PLAN.md` updated. Root test gate wired
   (`package.json` test script + `.prettierignore` fixture-dir exclusion).
   `MANUAL-TESTS.md`: no additions — WP-1 has no UI / real-PDF / folder-intake

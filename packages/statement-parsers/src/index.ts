@@ -33,7 +33,7 @@ export {
 } from "./desjardins.ts";
 
 /**
- * SCOPE item 3: the deterministic hash and the idempotent write path. Separate from
+ * SCOPE item 3: the deterministic hash (the idempotent write path was not ported). Separate from
  * every parser — a source produces values, this consumes them. See `hash.ts` for the
  * three decisions (accent folding, `institution_ref`, `type_code`).
  */
