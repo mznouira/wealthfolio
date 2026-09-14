@@ -1,7 +1,10 @@
 ---
-description: Updates documentation to match implemented changes. No shell access.
+description:
+  Updates documentation to match implemented changes. No shell access.
 mode: subagent
+model: opencode-go/glm-5.3-flash
 temperature: 0.2
+steps: 10
 permission:
   edit: allow
   bash: deny

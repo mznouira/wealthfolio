@@ -2,14 +2,16 @@
   "$schema": "https://opencode.ai/config.json",
   "default_agent": "orchestrator",
   "subagent_depth": 1,
+  "model": "opencode-go/glm-5.2",
+  "small_model": "opencode-go/glm-5.3-flash",
   "compaction": {
     "auto": true,
-    "prune": true
+    "prune": true,
   },
   "permission": {
     "edit": "ask",
     "bash": "ask",
     "webfetch": "ask",
-    "task": "deny"
-  }
+    "task": "deny",
+  },
 }

@@ -1,7 +1,10 @@
 ---
-description: Reviews a diff for spec compliance, correctness, and regressions. Read-only.
+description:
+  Reviews a diff for spec compliance, correctness, and regressions. Read-only.
 mode: subagent
+model: opencode-go/glm-5.2
 temperature: 0.1
+steps: 20
 permission:
   edit: deny
   bash:
@@ -21,4 +24,5 @@ Review a diff against the spec. Read-only.
 
 ## Output
 
-Ordered findings by severity (blocker / major / minor / nit), each with file:line and a concrete fix. No praise. If nothing is wrong, say so.
+Ordered findings by severity (blocker / major / minor / nit), each with
+file:line and a concrete fix. No praise. If nothing is wrong, say so.

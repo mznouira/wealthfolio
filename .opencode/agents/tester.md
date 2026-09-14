@@ -1,7 +1,11 @@
 ---
-description: Writes and runs tests, and reports failures verbatim. Use to verify changes before review.
+description:
+  Writes and runs tests, and reports failures verbatim. Use to verify changes
+  before review.
 mode: subagent
+model: opencode-go/glm-5.3-flash
 temperature: 0.1
+steps: 40
 permission:
   edit: allow
   bash:
