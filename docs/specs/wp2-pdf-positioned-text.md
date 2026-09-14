@@ -541,3 +541,22 @@ Genuinely open, answered at build time by the marked "coder verifies" items: the
 exact minified worker entry filename in installed 6.3.289 (W2-D3), the actual v6
 fake-worker global mechanism (W2-D3), and whether Node 26 type-stripping runs
 `generate.ts` as-is (W2-D8).
+
+## Post-implementation note (2026-09-14)
+
+WP-2 shipped as specified, with four recorded deviations:
+
+1. The `optimizeDeps.include: ["pdfjs-dist"]` entry (§5 edit 2) was skipped —
+   `pdfjs-dist` is unresolvable from `apps/frontend` under pnpm's strict layout
+   and the entry would break dev-server startup; Vite's dep scanner discovers it
+   through the aliased package source (dev-server smoke validated, all 200).
+2. A `standardFontDataUrl` option (risk 6's plan B) was trialled for Node and
+   removed as ineffective — text extraction of standard-14 fonts needs no font
+   data (the golden test passes without it).
+3. Generator content counts exceed the spec's soft numbers (44 rows / 6 wrapped
+   descriptions vs ~30 / 2–3) — accepted, more coverage.
+4. The cell-threshold implementation was aligned in review to the locked W2-D6
+   wording (gap vs the previous item's height, not an accumulating running max).
+
+Verified pdfjs facts, records, and the session log: `docs/statements/PLAN.md`
+§10 and `docs/statements/NOTES.md` S2 update.

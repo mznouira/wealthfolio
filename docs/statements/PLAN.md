@@ -71,7 +71,7 @@ can pick the work up with no other context.
 | ---- | ----------------------------------------------------------------------- | -------- | ------------------ |
 | WP-0 | Fork bootstrap + persist docs                                           | **done** | —                  |
 | WP-1 | Parser core package (port from portage) + spike notes                   | **done** | WP-0               |
-| WP-2 | PDF → positioned text (`pdfjs-dist`)                                    | pending  | WP-1               |
+| WP-2 | PDF → positioned text (`pdfjs-dist`)                                    | **done** | WP-1               |
 | WP-3 | Desjardins deposit statement parser + reconciliation                    | pending  | WP-2               |
 | WP-4 | Wealthfolio import integration (frontend)                               | pending  | WP-3               |
 | WP-5 | Credit-card parsers (Desjardins Visa, CIBC Costco MC) + payment pairing | pending  | WP-4, card samples |
@@ -183,6 +183,10 @@ Checked 2026-09-13 on Omarchy/Arch; Rust updated 2026-09-14:
   `pnpm approve-builds` if a build needs them.
 - Frontend-only work (parser package + vitest) does **not** need Rust; the
   import backend and desktop app do.
+- WP-2 additions (2026-09-14): `pdfjs-dist` 6.3.289 (exact-pinned; first runtime
+  dep of statement-parsers, `./pdf` subpath only) and `pdf-lib` ^1.17.1 (devDep,
+  synthetic fixture generator). Node 26 runs the generator's erasable-TS
+  directly (`node tests/fixtures/pdf/generate.ts`).
 
 ## 9. Open questions / risks
 
@@ -190,7 +194,9 @@ Checked 2026-09-13 on Omarchy/Arch; Rust updated 2026-09-14:
   spike) — **resolved (WP-1)**: `NOTES.md` S1.
 - Exact location/interfaces of the activity/CSV import feature (WP-1) —
   **resolved (WP-1)**: `NOTES.md` S1 + WP-4 note.
-- `pdfjs-dist` worker bundling under Vite/Tauri settings (WP-2).
+- `pdfjs-dist` worker bundling under Vite/Tauri settings (WP-2) — **resolved
+  (WP-2)**: worker wired via `?worker` → `workerPort`, dev-server smoke green;
+  Tauri/dev:web runtime checks are MANUAL-TESTS WP-2 items (owner-run).
 - French dates + wrapped descriptions + one file carrying several products
   (WP-3).
 - Overlap/dedup across monthly statements (WP-3/WP-4).
@@ -231,3 +237,33 @@ Checked 2026-09-13 on Omarchy/Arch; Rust updated 2026-09-14:
   available from here on (run when Rust is touched; a one-time `cargo check`
   baseline is queued for the WP-2 session). `docs/specs/wp2-session-prompt.md`
   updated to match. **Next:** WP-2 (pdfjs-dist → positioned text), prompt ready.
+- **2026-09-14 (later still)** — WP-2 done: PDF layer in
+  `packages/statement-parsers/src/pdf/` (`./pdf` subpath export;
+  `extractPageLines` → `PageLine[]`), pure reconstruction (`lines.ts`, 13 unit
+  tests), deterministic synthetic fixture generator (pdf-lib, committed script,
+  44 rows / 6 wrapped descriptions over 2 pages), true end-to-end golden test
+  (pdf-lib bytes → real pdfjs → reconstruction, frozen reviewed literal + 4
+  property assertions), dev-only probe route `/dev/statements-pdf`. Package
+  suite 8 files / 98 tests (84 pre-existing + 14 new); `pnpm lint`,
+  `pnpm type-check`, `pnpm format:check` green. Key decisions/deviations:
+  pdfjs-dist exact-pinned 6.3.289 (first runtime dep; `./pdf` subpath keeps the
+  main entry zero-dep); worker via static `?worker` import → `workerPort`
+  singleton, browser-guarded dynamic import, main-thread fake-worker fallback;
+  vitest plan B activated (package vitest.config aliases pdfjs-dist to
+  `legacy/build/pdf.mjs` — standard build not Node-supported; real pdfjs, no
+  mocking); `optimizeDeps.include` NOT added (unresolvable from apps/frontend
+  under pnpm's strict layout — deviation from the spec sketch; dev-server smoke
+  validated scanner discovery); `standardFontDataUrl` trialled and removed as
+  ineffective; generator exceeds the spec's soft content counts — accepted.
+  Records: cargo check baseline PASS (10m 8s, 0 errors, first compile); web
+  build has zero pdfjs markers in the main chunk and zero dead pdfjs chunks in
+  dist (review fixes); dev-server smoke all-200 including the worker module; no
+  `pnpm audit --prod` vulnerabilities; reviewer's 6 minor findings all fixed in
+  `9237ebb73`; security verdict SHIP-WITH-NITS (privacy mechanically verified;
+  CVE-2026-16633 does not affect 6.3.289; input size/page cap deferred to the
+  WP-4 import seam). Flagged gap: no real statement sample exists — generator
+  geometry and both tolerances are synthetic; WP-3 re-checks them against a real
+  PDF (MANUAL-TESTS WP-2 item 4 collects the evidence). **Next:** WP-3
+  (Desjardins deposit parser + reconciliation; ideally after the owner runs
+  MANUAL-TESTS items 1–4 and shares real geometry). **Broken/blocked:** none —
+  manual items 1–4 pending owner run.

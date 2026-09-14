@@ -53,3 +53,12 @@ The shared language for the statements feature in this fork. This file is a
 - **Statement source (the seam)** — the interface that reads bytes and yields
   validated statement lines plus per-line problems. It does not hash, classify,
   or touch the database.
+
+- **Positioned line** — a row reconstructed from a statement page's text layer:
+  which page it is on, its vertical position, and an ordered list of cells. The
+  institution parsers consume positioned lines, never raw text.
+
+- **Cell** — one horizontal cluster within a positioned line: a horizontal
+  position plus the text of the nearby items merged into it. Word gaps merge
+  into one cell; column gaps split cells — which is how right-aligned money
+  lands in its own column.

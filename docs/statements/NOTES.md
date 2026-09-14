@@ -76,6 +76,42 @@ Input for WP-2.
 - Test risk: jsdom/vitest cannot run the real PDF worker. WP-3 tests should use
   text-layer-only fixtures or a `pdfjs-dist` mock.
 
+### S2 update (WP-2, 2026-09-14)
+
+- Installed `pdfjs-dist` 6.3.289 (exact pin). Verified facts against the
+  installed package:
+  - No `exports` field in its `package.json` — deep imports like
+    `build/pdf.worker.min.mjs` resolve as plain file paths.
+  - Both `build/pdf.worker.min.mjs` and `build/pdf.worker.mjs` exist.
+  - The fake-worker global is `globalThis.pdfjsWorker?.WorkerMessageHandler`
+    (verified in `build/pdf.mjs`).
+  - v6 has no `doc.destroy()` — `loadingTask.destroy()` is the teardown.
+  - `TextItem` is not exported from the package entry types (hence the
+    structural `"str" in item` guard at the pdfjs boundary).
+
+- Worker wired per the S2 plan: static `?worker` import →
+  `GlobalWorkerOptions.workerPort` (module-level singleton), browser-guarded
+  dynamic import (jsdom has `window`/`document` but no `Worker`; node-env vitest
+  has none), main-thread fake-worker fallback on worker failure.
+
+- Node/vitest plan B activated: the package `vitest.config.ts` aliases
+  `pdfjs-dist` → `pdfjs-dist/legacy/build/pdf.mjs` (the standard build is not
+  Node-supported). The golden test runs real pdfjs on the main thread — no
+  mocking.
+
+- `optimizeDeps.include` was NOT added — deviation from the S2 sketch above:
+  `pdfjs-dist` is unresolvable from `apps/frontend` under pnpm's strict layout
+  (it is a dep of statement-parsers, not frontend) and the entry would break
+  dev-server startup. Vite's dep scanner discovers it through the aliased
+  package source; the dev-server smoke confirmed discovery + worker serving (all
+  modules HTTP 200, no dependency-resolution errors).
+
+- `standardFontDataUrl` is not needed for text extraction (trial added, then
+  removed: pdfjs still warns without it, but the golden test passes —
+  standard-14 text extraction needs no font data).
+
+- Tauri + dev:web runtime verification is MANUAL-TESTS WP-2 items (owner-run).
+
 ## S3 — Arbitrary-path read via @tauri-apps/plugin-fs
 
 Input for WP-6 and v1 intake design.
