@@ -2,7 +2,7 @@
 description:
   Reviews a diff for spec compliance, correctness, and regressions. Read-only.
 mode: subagent
-model: opencode-go/glm-5.2
+model: opencode-go/glm-5.3
 temperature: 0.1
 steps: 20
 permission:

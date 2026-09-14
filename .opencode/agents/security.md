@@ -3,7 +3,7 @@ description:
   Audits changes for security and privacy issues, including secrets, injection,
   authz, and data egress. Read-only.
 mode: subagent
-model: opencode-go/glm-5.2
+model: opencode-go/glm-5.3
 temperature: 0.1
 steps: 20
 permission:

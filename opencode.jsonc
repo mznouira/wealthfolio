@@ -2,6 +2,8 @@
   "$schema": "https://opencode.ai/config.json",
   "default_agent": "orchestrator",
   "subagent_depth": 1,
+  // Model tiers and rationale: .opencode/skills/model-selection/SKILL.md
+  // Rule: stable $60/mo models for high-volume roles; $15/mo for low-volume judgment.
   "model": "opencode-go/glm-5.2",
   "small_model": "opencode-go/glm-5.3-flash",
   "compaction": {
