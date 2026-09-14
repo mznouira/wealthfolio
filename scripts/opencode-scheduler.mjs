@@ -109,19 +109,29 @@ function parseArgs(argv) {
 const hasLabel = (issue, name) => (issue.labels || []).some((label) => label.name === name);
 
 async function listIssues(label, limit) {
-  const { stdout } = await exec("gh", [
-    "issue",
-    "list",
-    "--label",
-    label,
-    "--state",
-    "open",
-    "--limit",
-    String(limit),
-    "--json",
-    "number,title,body,labels",
-  ]);
-  return JSON.parse(stdout);
+  try {
+    const { stdout } = await exec("gh", [
+      "issue",
+      "list",
+      "--label",
+      label,
+      "--state",
+      "open",
+      "--limit",
+      String(limit),
+      "--json",
+      "number,title,body,labels",
+    ]);
+    return JSON.parse(stdout);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (/no git remotes found|not a git repository/i.test(message)) {
+      throw new Error("no GitHub repository configured; add a git remote and run `gh auth status`");
+    }
+    throw new Error(
+      `gh issue list failed: ${message.split("\n").filter(Boolean).pop() ?? message}`,
+    );
+  }
 }
 
 function promptFor(issue) {
