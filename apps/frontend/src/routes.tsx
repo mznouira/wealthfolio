@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+
+const PdfWorkerProbePage = lazy(() => import("@/features/statements/dev/pdf-worker-probe-page"));
 
 import { AppLayout } from "@/pages/layouts/app-layout";
 import { OnboardingLayout } from "@/pages/layouts/onboarding-layout";
@@ -129,6 +131,20 @@ export function AppRoutes() {
               element={<AddonIframeRoute addonId={addonId} routeId={routeId} />}
             />
           ))}
+          {/* Dev-only diagnostic routes */}
+          {import.meta.env.DEV
+            ? [
+                <Route
+                  key="dev-statements-pdf"
+                  path="dev/statements-pdf"
+                  element={
+                    <Suspense fallback={null}>
+                      <PdfWorkerProbePage />
+                    </Suspense>
+                  }
+                />,
+              ]
+            : []}
           <Route path="settings" element={<SettingsLayout />}>
             <Route index element={<GeneralSettingsPage />} />
             <Route path="general" element={<GeneralSettingsPage />} />
