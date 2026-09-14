@@ -70,7 +70,7 @@ Environment facts (do not re-derive):
   holdings-toolbar-order 7, spending-insights-page 8) plus timeout flake —
   verified pre-existing at `69fedca`, environmental, out of scope; do not chase.
   Your gates: the statement-parsers package tests, `pnpm lint`,
-  `pnpm type-check`, `pnpm format:check`. Skip all cargo.
+  `pnpm type-check`, `pnpm format:check`.
 - The statement-parsers package (WP-1): source-distributed (exports →
   `src/index.ts`), package-level vitest (node env, explicit imports), strict
   tsconfig (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`), root
