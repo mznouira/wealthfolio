@@ -67,16 +67,16 @@ can pick the work up with no other context.
 
 ## 5. Work packages
 
-| WP   | Title                                                                   | Status          | Depends on         |
-| ---- | ----------------------------------------------------------------------- | --------------- | ------------------ |
-| WP-0 | Fork bootstrap + persist docs                                           | **in progress** | —                  |
-| WP-1 | Parser core package (port from portage) + spike notes                   | **done**        | WP-0               |
-| WP-2 | PDF → positioned text (`pdfjs-dist`)                                    | pending         | WP-1               |
-| WP-3 | Desjardins deposit statement parser + reconciliation                    | pending         | WP-2               |
-| WP-4 | Wealthfolio import integration (frontend)                               | pending         | WP-3               |
-| WP-5 | Credit-card parsers (Desjardins Visa, CIBC Costco MC) + payment pairing | pending         | WP-4, card samples |
-| WP-6 | Intake automation: watched folder (v1), Drive OAuth (parked)            | pending         | WP-4               |
-| WP-7 | Upstream readiness: generic seam behind a flag, design issue/PR         | pending         | WP-5               |
+| WP   | Title                                                                   | Status   | Depends on         |
+| ---- | ----------------------------------------------------------------------- | -------- | ------------------ |
+| WP-0 | Fork bootstrap + persist docs                                           | **done** | —                  |
+| WP-1 | Parser core package (port from portage) + spike notes                   | **done** | WP-0               |
+| WP-2 | PDF → positioned text (`pdfjs-dist`)                                    | pending  | WP-1               |
+| WP-3 | Desjardins deposit statement parser + reconciliation                    | pending  | WP-2               |
+| WP-4 | Wealthfolio import integration (frontend)                               | pending  | WP-3               |
+| WP-5 | Credit-card parsers (Desjardins Visa, CIBC Costco MC) + payment pairing | pending  | WP-4, card samples |
+| WP-6 | Intake automation: watched folder (v1), Drive OAuth (parked)            | pending  | WP-4               |
+| WP-7 | Upstream readiness: generic seam behind a flag, design issue/PR         | pending  | WP-5               |
 
 ### WP-0 — Fork bootstrap (current)
 
@@ -87,7 +87,8 @@ can pick the work up with no other context.
 - [x] `pnpm@10.33.4` installed; `pnpm install` green.
 - [x] Persist `docs/statements/` (this plan, glossary, protocol, manual tests)
       and the `statements` skill.
-- [ ] Rust toolchain + Tauri system deps (blocked on sudo; see §8).
+- [x] Rust toolchain + Tauri system deps (installed 2026-09-14; `pnpm tauri dev`
+      owner-verified; see §8).
 - [x] Locate and document the activity/CSV import feature and its interfaces.
 
 ### WP-1 — Parser core + spike
@@ -158,7 +159,8 @@ pair** links a chequing debit to a card credit.
 ## 7. Verification / gates
 
 - TypeScript: `pnpm test` (vitest), `pnpm lint`, `pnpm type-check`.
-- Rust (once toolchain is installed): `cargo test`, `cargo clippy`.
+- Rust (toolchain installed 2026-09-14): `cargo test`, `cargo clippy` — run when
+  Rust is touched.
 - Parser package: unit tests + **golden fixtures** (synthetic) + a hard
   reconciliation assertion.
 - Manual: anything CI cannot reach (real PDFs, folder intake, review grid) is
@@ -168,15 +170,15 @@ pair** links a chequing debit to a card credit.
 
 ## 8. Environment / toolchain notes
 
-Checked 2026-09-13 on Omarchy/Arch:
+Checked 2026-09-13 on Omarchy/Arch; Rust updated 2026-09-14:
 
 - `gh` authenticated as `mznouira` (`repo` scope) — fork and PRs are possible.
 - Node 26.8.1 via mise; **corepack is absent** on this Node; `pnpm@10.33.4` was
   installed with `npm install -g pnpm@10.33.4` (user prefix under mise).
-- **Rust/`cargo` not installed.** `rust-toolchain.toml` pins `1.95.0`.
-- `sudo` requires a password, so Tauri system deps are not installed. Needed on
-  Arch: `webkit2gtk-4.1` (present), `libappindicator-gtk3` (missing), plus the
-  usual Tauri set. Install with the owner present.
+- **Rust installed 2026-09-14** (owner): rustc 1.95.0 (59807616e 2026-04-14),
+  cargo 1.95.0 (f2d3ce0bd 2026-03-21), clippy 0.1.95 (59807616e1 2026-04-14);
+  `rust-toolchain.toml` pins `1.95.0`. Owner verified `pnpm tauri dev` works
+  end-to-end (Tauri system deps OK).
 - `pnpm install` warns that `@swc/core` build scripts were skipped; run
   `pnpm approve-builds` if a build needs them.
 - Frontend-only work (parser package + vitest) does **not** need Rust; the
@@ -224,3 +226,8 @@ Checked 2026-09-13 on Omarchy/Arch:
   flake (total fluctuates 33–44 across runs); verified pre-existing at `69fedca`
   via baseline worktree rerun; environmental, needs its own ticket. Rust
   toolchain still absent.
+- **2026-09-14 (later)** — Owner installed the Rust toolchain; `pnpm tauri dev`
+  verified working. §8 + WP-0 updated (WP-0 now fully done); cargo gates
+  available from here on (run when Rust is touched; a one-time `cargo check`
+  baseline is queued for the WP-2 session). `docs/specs/wp2-session-prompt.md`
+  updated to match. **Next:** WP-2 (pdfjs-dist → positioned text), prompt ready.

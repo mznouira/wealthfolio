@@ -9,7 +9,7 @@ autonomously: you are pre-authorized to make every decision until WP-2 is done.
 Do not wait for approval between phases — run your full loop (spec → plan →
 build → verify → review → docs) and document each decision and its rationale in
 the spec and the PLAN.md session log. Stop only if blocked on something only the
-owner can do (sudo/Rust install, credentials/network, or a missing real
+owner can do (sudo for system packages, credentials/network, or a missing real
 statement sample that proves essential).
 
 Load the `statements` skill, then read docs/statements/PLAN.md (§4 architecture,
@@ -45,20 +45,26 @@ Scope:
 - Golden test: generated synthetic PDF → expected `PageLine[]` (positions
   asserted, not just text). Plus unit tests for the reconstruction rules
   (y-clustering, x-ordering, multi-page).
-- MANUAL-TESTS.md: add a dated entry for the worker under a real browser runtime
-  (first item: how to leave it / recover, per the fork protocol).
+- MANUAL-TESTS.md: add a dated entry for the worker under `pnpm tauri dev` (the
+  real Tauri runtime — custom protocol + CSP) and `pnpm run dev:web`; first
+  item: how to leave the dev server and recover if leaving fails (it occupies a
+  terminal), per the fork protocol.
 - If new vocabulary stabilizes (e.g. `PageLine`, cell), add it to CONTEXT.md.
 
 Constraints: additive-only; minimal upstream edits, each declared in the spec
 and session log; synthetic fixtures only — never commit a real statement,
-account number, or balance; one work package this session; frontend-only.
+account number, or balance; one work package this session; frontend-only (no
+Rust code changes — the toolchain is available for the baseline check below).
 
 Environment facts (do not re-derive):
 
-- Rust is still not installed (PLAN §8) — `pnpm tauri dev` is NOT available.
-  Verify the worker under `pnpm run dev:web` and a production build via
-  `vite build` + preview; record the true Tauri-runtime check as a pending
-  manual test blocked on the Rust install.
+- The Rust toolchain is installed and `pnpm tauri dev` works (owner-verified
+  2026-09-14; versions in PLAN §8). Verify the pdfjs worker primarily under
+  `pnpm tauri dev` — the real Tauri runtime — with `pnpm run dev:web` as a
+  secondary check. WP-2 itself touches no Rust: run a one-time `cargo check`
+  baseline (first compile is slow — fine) and record the result in the session
+  log; if it fails, record the error and move on — do not debug the Rust
+  toolchain in this session.
 - `pnpm test`'s frontend portion has 29 pre-existing deterministic failures
   (jsdom `window.localStorage` undefined: performance-page 14,
   holdings-toolbar-order 7, spending-insights-page 8) plus timeout flake —
@@ -75,6 +81,6 @@ Environment facts (do not re-derive):
 
 Finish by: updating PLAN.md's WP table (WP-2 → done) + session log (done / next
 / blocked) per the fork protocol; appending the MANUAL-TESTS.md entry; gates
-green (package tests + lint + type-check + format:check; skip cargo); a
-privacy/security pass (no real statement data anywhere); then push
-`zied/statements` to origin.
+green (package tests + lint + type-check + format:check; cargo baseline
+recorded, not a gate); a privacy/security pass (no real statement data
+anywhere); then push `zied/statements` to origin.
