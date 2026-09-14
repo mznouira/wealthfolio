@@ -59,7 +59,15 @@ browser.
    parse error is displayed, or lines are empty/garbled.
 
 3. Same check under `pnpm run dev:web` (secondary — plain browser, no Tauri
-   CSP). **Command:** `pnpm run dev:web` (spawns the cargo server + Vite). Open
+   CSP). **Command:** (amended 2026-09-14: added the `.env.web` prerequisite
+   after the owner hit the secret-key panic) One-time setup (skip if `.env.web`
+   exists): `cp .env.web.example .env.web`, generate a key with
+   `openssl rand -base64 32`, and fill it into the **existing** empty
+   `WF_SECRET_KEY=` line of `.env.web` — do not append a duplicate line: the
+   loader in `scripts/dev-web.mjs` is first-occurrence-wins and the server
+   treats an empty value as unset, so an appended line is ignored and the server
+   still panics (`apps/server/src/config.rs:63`). `.env.web` is gitignored. Then
+   run `pnpm run dev:web` (spawns the cargo server + Vite). Open
    `http://localhost:1420/dev/statements-pdf` in a browser and repeat item 2's
    assertions. **Pass:** as item 2. **Failure:** as item 2. Leave: Ctrl+C in the
    terminal (`scripts/dev-web.mjs` kills both children). If leaving fails:
@@ -76,6 +84,16 @@ browser.
    PLAN §5 WP-3 / NOTES — it is the evidence that tunes WP-3's tolerances and
    the generator (the WP-2 gap: no real sample existed, so geometry is
    synthetic).
+
+### Results (2026-09-14, owner-run)
+
+1. Pass.
+2. Pass — badge `worker-port`; 54 lines / 2 pages, matching the golden test
+   exactly; console clean; second load OK (worker reuse).
+3. Pass after one-time `.env.web` setup (see amended command above) — badge
+   `worker-port`; same 54-line output; second import OK. The initial failure was
+   environmental (missing server secret key), not a WP-2 defect.
+4. Pending — owner runs next; geometry evidence feeds WP-3 tolerance tuning.
 
 ---
 

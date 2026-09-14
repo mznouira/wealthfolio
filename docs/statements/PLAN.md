@@ -267,3 +267,15 @@ Checked 2026-09-13 on Omarchy/Arch; Rust updated 2026-09-14:
   (Desjardins deposit parser + reconciliation; ideally after the owner runs
   MANUAL-TESTS items 1–4 and shares real geometry). **Broken/blocked:** none —
   manual items 1–4 pending owner run.
+- **2026-09-14 (owner manual tests)** — MANUAL-TESTS WP-2 items 1–3 run, all
+  pass: `worker-port` badge on both runtimes (Tauri custom protocol + CSP, and
+  plain browser), 54/54 lines matching golden, console clean, worker reuse OK.
+  Item 3 initially failed environmentally — no `.env.web`, server secret-key
+  panic (`apps/server/src/config.rs:63`); item 3's command amended with the
+  one-time setup step (first-occurrence-wins loader gotcha recorded). Item 4
+  (real-sample geometry) pending, owner runs next. Startup "Syncing market
+  data…/Calculating portfolio performance…" spinners observed and explained:
+  pre-existing portfolio-sync behavior (`portfolio-sync-context.tsx`,
+  `use-global-event-listener.ts`), untouched by the branch. **Next:** WP-3
+  (Desjardins deposit parser + reconciliation; unblocked — item 4's real
+  geometry still valuable when available). **Broken/blocked:** none.
