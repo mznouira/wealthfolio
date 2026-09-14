@@ -8,6 +8,7 @@ export type { PageCell, PageLine, PdfWorkerMode, TextItemLike };
 export { pdfWorkerMode };
 
 export async function extractPageLines(bytes: Uint8Array): Promise<PageLine[]> {
+  // jsdom has window+document but no Worker; node-env vitest has none; only a real browser has all three.
   const isBrowser =
     typeof window !== "undefined" &&
     typeof document !== "undefined" &&
@@ -20,9 +21,9 @@ export async function extractPageLines(bytes: Uint8Array): Promise<PageLine[]> {
 
   const data = bytes.slice();
   const loadingTask = getDocument({ data });
-  const doc = await loadingTask.promise;
 
   try {
+    const doc = await loadingTask.promise;
     const lines: PageLine[] = [];
 
     for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber++) {

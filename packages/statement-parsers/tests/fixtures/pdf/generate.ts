@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, type PDFFont, type PDFPage } from "pdf-lib";
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
@@ -234,6 +234,3 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   // eslint-disable-next-line no-console
   console.log(`Wrote ${bytes.length} bytes to ${outputPath}`);
 }
-
-// Satisfy the module-level type reference used above.
-type PDFFont = Awaited<ReturnType<PDFDocument["embedFont"]>>;

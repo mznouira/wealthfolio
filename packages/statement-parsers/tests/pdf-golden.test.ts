@@ -550,13 +550,14 @@ describe("extractPageLines golden", () => {
       });
       expect(hasWrappedContinuation).toBe(true);
 
-      // (d) Page 1 precedes page 2 and y descends within each page.
-      const page1Lines = lines.filter((line) => line.page === 1);
-      const page2Lines = lines.filter((line) => line.page === 2);
-      expect(page1Lines.every((line) => line.page === 1)).toBe(true);
-      expect(page2Lines.every((line) => line.page === 2)).toBe(true);
-      expect(lines[lines.length - 1]?.page).toBeGreaterThanOrEqual(lines[0]?.page ?? 0);
-      for (const pageLines of [page1Lines, page2Lines]) {
+      // (d) Pages are non-decreasing and y descends within each page.
+      expect(lines.every((line, index) => index === 0 || lines[index - 1]!.page <= line.page)).toBe(
+        true,
+      );
+      for (const pageLines of [
+        lines.filter((line) => line.page === 1),
+        lines.filter((line) => line.page === 2),
+      ]) {
         for (let i = 1; i < pageLines.length; i++) {
           expect(pageLines[i]?.y).toBeLessThan(pageLines[i - 1]?.y ?? Infinity);
         }

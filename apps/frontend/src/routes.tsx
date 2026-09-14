@@ -1,8 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
-const PdfWorkerProbePage = lazy(() => import("@/features/statements/dev/pdf-worker-probe-page"));
-
 import { AppLayout } from "@/pages/layouts/app-layout";
 import { OnboardingLayout } from "@/pages/layouts/onboarding-layout";
 import SettingsLayout from "@/pages/settings/settings-layout";
@@ -56,6 +54,10 @@ import GoalsDashboardPage from "@/features/goals/pages/goals-dashboard-page";
 import GoalNewPage from "@/features/goals/pages/goal-new-page";
 import GoalDetailPage from "@/features/goals/pages/goal-detail-page";
 import GoalRetirementGuidePage from "@/features/goals/pages/goal-retirement-guide-page";
+
+const PdfWorkerProbePage = import.meta.env.DEV
+  ? lazy(() => import("@/features/statements/dev/pdf-worker-probe-page"))
+  : null;
 
 function NavigationEventBridge() {
   useNavigationEventListener();
@@ -132,7 +134,7 @@ export function AppRoutes() {
             />
           ))}
           {/* Dev-only diagnostic routes */}
-          {import.meta.env.DEV
+          {import.meta.env.DEV && PdfWorkerProbePage !== null
             ? [
                 <Route
                   key="dev-statements-pdf"

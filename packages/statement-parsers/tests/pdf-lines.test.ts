@@ -48,6 +48,28 @@ describe("buildPageLines", () => {
     expect(lines).toHaveLength(2);
   });
 
+  test("sorts same-baseline items supplied in reverse x-order", () => {
+    const height = 8;
+    const threshold = CELL_GAP_FACTOR * height;
+    const gapAboveThreshold = threshold + 0.1;
+    const lines = buildPageLines(1, [
+      item("B", 20 + gapAboveThreshold, 100, 10, height),
+      item("A", 0, 100, 10, height),
+    ]);
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.cells.map((cell) => ({ x: cell.x, text: cell.text }))).toEqual([
+      { x: 0, text: "A" },
+      { x: 20 + gapAboveThreshold, text: "B" },
+    ]);
+  });
+
+  test("splits realistic row pitch ~10pt apart", () => {
+    const lines = buildPageLines(1, [item("A", 0, 100, 10), item("B", 0, 90, 10)]);
+    expect(lines).toHaveLength(2);
+    expect(lines[0]?.cells[0]?.text).toBe("A");
+    expect(lines[1]?.cells[0]?.text).toBe("B");
+  });
+
   test("merges adjacent word gaps at exactly the threshold", () => {
     const height = 8;
     const threshold = CELL_GAP_FACTOR * height;
@@ -76,6 +98,11 @@ describe("buildPageLines", () => {
   });
 
   test("collapses whitespace inside a cell", () => {
+    const lines = buildPageLines(1, [item("A   B", 0, 100, 10)]);
+    expect(lines[0]?.cells[0]?.text).toBe("A B");
+  });
+
+  test("joins two adjacent items into a single cell", () => {
     const lines = buildPageLines(1, [item("A", 0, 100, 10), item("B", 12, 100, 10)]);
     expect(lines[0]?.cells[0]?.text).toBe("A B");
   });

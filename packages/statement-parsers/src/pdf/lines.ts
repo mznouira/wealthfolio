@@ -18,7 +18,9 @@ export interface PageLine {
   readonly cells: readonly PageCell[];
 }
 
+/** 2pt: same-row baseline jitter clusters, distinct rows/wrapped lines split. */
 export const Y_TOLERANCE = 2;
+/** 0.5: word gaps scale with font size, column gaps do not — half a character height separates them. */
 export const CELL_GAP_FACTOR = 0.5;
 
 interface PositionedItem {
@@ -72,22 +74,22 @@ function finishLine(page: number, items: PositionedItem[]): PageLine {
     readonly x: number;
     texts: string[];
     right: number;
-    height: number;
   } | null = null;
+  let previous: PositionedItem | null = null;
 
   for (const item of sorted) {
-    if (current === null) {
+    if (current === null || previous === null) {
       current = {
         x: item.x,
         texts: [item.str],
         right: item.x + item.width,
-        height: item.height,
       };
+      previous = item;
       continue;
     }
 
     const gap = item.x - current.right;
-    const threshold = CELL_GAP_FACTOR * Math.max(current.height, item.height);
+    const threshold = CELL_GAP_FACTOR * Math.max(previous.height, item.height);
 
     if (gap > threshold) {
       cells.push({ x: current.x, text: collapseWhitespace(current.texts.join(" ")) });
@@ -95,15 +97,12 @@ function finishLine(page: number, items: PositionedItem[]): PageLine {
         x: item.x,
         texts: [item.str],
         right: item.x + item.width,
-        height: item.height,
       };
     } else {
       current.texts.push(item.str);
       current.right = item.x + item.width;
-      if (item.height > current.height) {
-        current.height = item.height;
-      }
     }
+    previous = item;
   }
 
   if (current !== null) {
