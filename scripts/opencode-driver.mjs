@@ -2,6 +2,7 @@
 import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import process from "node:process";
+import { baseOptions, parseCommonArgs, HELP_COMMON } from "./factory-driver-common.mjs";
 
 const HELP = `Drive an OpenCode session over the HTTP API.
 
@@ -11,94 +12,21 @@ Usage:
   node scripts/opencode-driver.mjs --server http://127.0.0.1:4096 --prompt "..."
 
 Options:
-  --prompt <text>       Prompt to send (positional text also works)
-  --prompt-file <path>  Read the prompt from a file
-  --agent <name>        Agent to use (default: orchestrator)
-  --model <p/m>         provider/model override
-  --title <text>        Session title (default: first 60 chars of prompt)
-  --dir <path>          Working directory for the server (default: cwd)
+${HELP_COMMON}
   --port <n>            Port for a spawned server (default: 4096)
   --server <url>        Attach to a running server instead of spawning one
-  --timeout <ms>        Abort the message request after this many ms (default: 600000, 0 disables)
-  --dry-run             Start/health-check the server and create a session, then exit
-  --json                Print the raw assistant message JSON
-  -h, --help            Show this help
 
 Set OPENCODE_SERVER_PASSWORD (and optionally OPENCODE_SERVER_USERNAME) when the
 target server requires basic auth.`;
 
 function parseArgs(argv) {
-  const opts = {
-    agent: "orchestrator",
-    dir: process.cwd(),
-    port: 4096,
-    server: null,
-    prompt: null,
-    promptFile: null,
-    model: null,
-    title: null,
-    timeout: 600000,
-    dryRun: false,
-    json: false,
-    help: false,
-  };
-  for (let i = 0; i < argv.length; i++) {
-    const arg = argv[i];
-    const next = () => {
-      const value = argv[++i];
-      if (value === undefined) {
-        console.error(`error: ${arg} requires a value`);
-        process.exit(2);
-      }
-      return value;
-    };
-    switch (arg) {
-      case "--prompt":
-        opts.prompt = next();
-        break;
-      case "--prompt-file":
-        opts.promptFile = next();
-        break;
-      case "--agent":
-        opts.agent = next();
-        break;
-      case "--model":
-        opts.model = next();
-        break;
-      case "--title":
-        opts.title = next();
-        break;
-      case "--dir":
-        opts.dir = next();
-        break;
-      case "--port":
-        opts.port = Number(next());
-        break;
-      case "--server":
-        opts.server = next();
-        break;
-      case "--timeout":
-        opts.timeout = Number(next());
-        break;
-      case "--dry-run":
-        opts.dryRun = true;
-        break;
-      case "--json":
-        opts.json = true;
-        break;
-      case "-h":
-      case "--help":
-        opts.help = true;
-        break;
-      default:
-        if (!arg.startsWith("-") && opts.prompt === null) opts.prompt = arg;
-        else {
-          console.error(`error: unknown argument: ${arg}`);
-          process.exit(2);
-        }
-    }
-  }
-  return opts;
+  const opts = baseOptions({ agent: "orchestrator", timeout: 600000 });
+  opts.port = 4096;
+  opts.server = null;
+  return parseCommonArgs(argv, opts, {
+    "--port": (o, next) => (o.port = Number(next())),
+    "--server": (o, next) => (o.server = next()),
+  });
 }
 
 function authHeaders() {

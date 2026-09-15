@@ -1,37 +1,9 @@
 import type { Plugin } from "@opencode-ai/plugin";
+import { isSecretPath, destructiveReason, formatterFor } from "../../scripts/factory-guard.mjs";
 
-const SECRET_PATHS: RegExp[] = [
-  /(^|\/)\.env(\..+)?$/,
-  /(^|\/)\.npmrc$/,
-  /(^|\/)\.netrc$/,
-  /(^|\/)auth\.json$/,
-  /\.(pem|key|p12|pfx)$/,
-  /(^|\/)id_(rsa|dsa|ecdsa|ed25519)(\.pub)?$/,
-  /(^|\/)\.ssh\//,
-];
-
-const DESTRUCTIVE: RegExp[] = [
-  /\brm\s+(-[a-z]*[rf][a-z]*\s+)+/i,
-  /\bgit\s+reset\s+--hard\b/i,
-  /\bgit\s+clean\s+-[a-z]*f/i,
-  /\bgit\s+branch\s+-D\b/i,
-  /\b(mkfs|shutdown|reboot|halt)\b/i,
-  /:\(\)\s*\{.*\}\s*;\s*:/,
-  /\b(npm|pnpm|yarn|bun)\s+publish\b/i,
-  /\bcargo\s+publish\b/i,
-];
-
-function isSecret(path: string): boolean {
-  const normalized = path.replace(/\\/g, "/");
-  const base = normalized.split("/").pop() ?? "";
-  if (/example|sample|template/.test(base)) return false;
-  return SECRET_PATHS.some((re) => re.test(normalized));
-}
-
-function isForcePush(cmd: string): boolean {
-  return /\bgit\s+push\b/.test(cmd) && /(^|\s)(--force|--force-with-lease|-f)(\s|$)/.test(cmd);
-}
-
+// Adapter around scripts/factory-guard.mjs, which is the shared source for
+// this logic (the Claude Code hooks in .claude/settings.json enforce the
+// same rules from that same file). Edit the rules there, not here.
 export const Guard: Plugin = async ({ $, directory }) => {
   return {
     "tool.execute.before": async (input, output) => {
@@ -44,19 +16,16 @@ export const Guard: Plugin = async ({ $, directory }) => {
             : typeof args.path === "string"
               ? args.path
               : "";
-        if (path && isSecret(path)) {
+        if (path && isSecretPath(path)) {
           throw new Error(`Blocked read of secret file: ${path}`);
         }
       }
 
       if (input.tool === "bash") {
         const command = typeof args.command === "string" ? args.command : "";
-        if (isForcePush(command)) {
-          throw new Error("Blocked force push. Push a normal branch and let a human force-push.");
-        }
-        const hit = DESTRUCTIVE.find((re) => re.test(command));
-        if (hit) {
-          throw new Error(`Blocked destructive command: ${command}`);
+        const reason = destructiveReason(command);
+        if (reason) {
+          throw new Error(`Blocked destructive command: ${command} (${reason})`);
         }
       }
     },
@@ -66,10 +35,11 @@ export const Guard: Plugin = async ({ $, directory }) => {
       const path = input.args?.filePath ?? input.args?.path;
       if (typeof path !== "string" || !path) return;
 
+      const formatter = formatterFor(path);
       try {
-        if (/\.rs$/.test(path)) {
+        if (formatter === "rustfmt") {
           await $`rustfmt --edition 2021 ${path}`.cwd(directory).quiet();
-        } else if (/\.(ts|tsx|js|jsx|mjs|cjs|css|md|json|jsonc)$/.test(path)) {
+        } else if (formatter === "prettier") {
           await $`pnpm exec prettier --write ${path}`.cwd(directory).quiet();
         }
       } catch {

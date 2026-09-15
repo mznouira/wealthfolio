@@ -8,11 +8,12 @@ description:
 
 # Model Selection
 
-Single source of truth for `opencode-go/*` model choices in this harness. Update
-this file when models change, then update the agent frontmatter and
-`opencode.jsonc`.
+Single source of truth for `opencode-go/*` model choices in the OpenCode
+harness. Update this file when models change, then update
+`.factory/factory.config.json` and run `pnpm factory:sync` (this regenerates
+both `.opencode/agents/*.md` and `.claude/agents/*.md` frontmatter).
 
-## Current assignments
+## Current assignments (OpenCode)
 
 | Role                       | Model                        | Why                                                            |
 | -------------------------- | ---------------------------- | -------------------------------------------------------------- |
@@ -24,6 +25,24 @@ this file when models change, then update the agent frontmatter and
 | security                   | `opencode-go/glm-5.3`        | Same, plus strongest CyberGym / AutomationBench                |
 | scribe                     | `opencode-go/glm-5.3-flash`  | Cheap, bounded editing                                         |
 | small_model (titles, etc.) | `opencode-go/glm-5.3-flash`  | Cheapest model that is good enough for lightweight tasks       |
+
+## Current assignments (Claude Code)
+
+Set in `.factory/factory.config.json` under each agent's `claude.model` key and
+regenerated into `.claude/agents/*.md` by `pnpm factory:sync`. Claude has no
+per-5h dollar-quota tiers like OpenCode Go, so the assignment is a qualitative
+capability/cost tradeoff (haiku < sonnet < opus), not a benchmark table — check
+the `claude-api` skill for current pricing before relying on a specific number.
+
+| Role         | Model    | Why                                                         |
+| ------------ | -------- | ----------------------------------------------------------- |
+| orchestrator | `sonnet` | Delegates only; needs judgment to decompose, not raw speed  |
+| planner      | `sonnet` | High-value output, moderate volume                          |
+| coder        | `sonnet` | Implementation quality matters more than per-call cost      |
+| tester       | `haiku`  | High volume, mostly mechanical (run ladder, report output)  |
+| reviewer     | `sonnet` | Judgment-heavy; false negatives here are expensive          |
+| security     | `sonnet` | Same — audits need real judgment, not just pattern-matching |
+| scribe       | `haiku`  | Cheap, bounded editing                                      |
 
 ## How Go limits work
 
@@ -93,7 +112,7 @@ DeepSeek looks ~4x cheaper per request, but on real tasks it emits far more
 output tokens, so Artificial Analysis puts it at ~6x the cost per task and 17
 points lower on the Intelligence Index. DeepSeek also reverts to $15 on Sep 20.
 
-## Re-evaluation procedure
+## Re-evaluation procedure (OpenCode)
 
 1. `opencode models opencode-go` — confirm available model IDs.
 2. Fetch <https://opencode.ai/docs/go/> — current limits and per-request
@@ -105,8 +124,18 @@ points lower on the Intelligence Index. DeepSeek also reverts to $15 on Sep 20.
 6. Verify benchmark numbers against independent sources; harness/scaffold
    differences swing scores by >15 points. Treat vendor tables as directional.
 7. Check privacy terms and promo/peak pricing.
-8. Update this file, the agent frontmatter, and `opencode.jsonc`, then verify
-   with `opencode debug agent <name>`.
+8. Update this file and `.factory/factory.config.json`'s `opencode.model` keys,
+   run `pnpm factory:sync`, then verify with `opencode debug agent <name>`.
+
+## Re-evaluation procedure (Claude Code)
+
+1. Check the `claude-api` skill for current model IDs and pricing — don't rely
+   on numbers memorized here.
+2. Claude has no per-5h dollar cap like OpenCode Go; the tradeoff is just
+   capability vs. latency/cost (haiku < sonnet < opus).
+3. Update this file and `.factory/factory.config.json`'s `claude.model` keys,
+   run `pnpm factory:sync`, then sanity-check the regenerated
+   `.claude/agents/<name>.md` frontmatter.
 
 ## Sources
 

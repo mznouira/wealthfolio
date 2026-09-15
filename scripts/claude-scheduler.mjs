@@ -1,6 +1,9 @@
 #!/usr/bin/env node
-// Thin OpenCode-flavored entry point over the shared factory-scheduler-core.
-// See .factory/README.md.
+// The Claude Code counterpart to opencode-scheduler.mjs. Same GitHub-issue
+// polling and worktree/PR logic, driven through claude-driver.mjs instead.
+// Always passes --unattended: a scheduled run has no one to answer a
+// permission prompt, so anything outside .claude/settings.json's allow-list
+// is auto-denied rather than hanging. See .factory/README.md.
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -8,21 +11,21 @@ import { helpText, parseSchedulerArgs, runScheduler } from "./factory-scheduler-
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const ctx = {
-  engine: "opencode",
+  engine: "claude",
   root,
-  worktreeScript: join(root, "scripts", "opencode-worktree.sh"),
-  driverScript: join(root, "scripts", "opencode-driver.mjs"),
-  extraDriveArgs: [],
+  worktreeScript: join(root, "scripts", "claude-worktree.sh"),
+  driverScript: join(root, "scripts", "claude-driver.mjs"),
+  extraDriveArgs: ["--unattended"],
 };
 
 const opts = parseSchedulerArgs(process.argv.slice(2), {
-  label: "opencode",
+  label: "claude",
   agent: "orchestrator",
   timeout: 1800000,
 });
 
 if (opts.help) {
-  console.log(helpText("OpenCode", "opencode"));
+  console.log(helpText("Claude Code", "claude"));
   process.exit(0);
 }
 

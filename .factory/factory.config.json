@@ -1,0 +1,196 @@
+{
+  "$comment": "Single source of truth consumed by scripts/factory-sync.mjs. Edit this file and/or the matching body under .factory/agents|commands, then run `pnpm factory:sync`. See .factory/README.md.",
+  "agents": {
+    "orchestrator": {
+      "description": "Coordinates multi-phase work by decomposing requests and delegating to specialist subagents. Use as the default entry point for any non-trivial change.",
+      "opencode": {
+        "mode": "primary",
+        "model": "opencode-go/glm-5.2",
+        "temperature": 0.2,
+        "steps": 50,
+        "permission": {
+          "edit": "deny",
+          "bash": "deny",
+          "task": {
+            "*": "deny",
+            "planner": "allow",
+            "coder": "allow",
+            "tester": "allow",
+            "reviewer": "allow",
+            "security": "allow",
+            "scribe": "allow",
+            "explore": "allow",
+            "scout": "allow"
+          }
+        }
+      },
+      "claude": {
+        "tools": "Agent, Read, Grep, Glob",
+        "disallowedTools": "Edit, Write, Bash",
+        "model": "sonnet"
+      }
+    },
+    "planner": {
+      "description": "Turns intent into a concrete, reviewable implementation plan. Use proactively before any implementation work.",
+      "opencode": {
+        "mode": "subagent",
+        "model": "opencode-go/glm-5.2",
+        "temperature": 0.1,
+        "steps": 20,
+        "permission": { "edit": "ask", "bash": "deny", "webfetch": "deny" }
+      },
+      "claude": {
+        "tools": "Read, Grep, Glob, Write, Edit",
+        "disallowedTools": "Bash",
+        "model": "sonnet"
+      }
+    },
+    "coder": {
+      "description": "Implements one bounded slice from a self-contained brief. Use for code changes after a plan is approved.",
+      "opencode": {
+        "mode": "subagent",
+        "model": "opencode-go/kimi-k2.7-code",
+        "temperature": 0.2,
+        "steps": 40,
+        "permission": {
+          "edit": "allow",
+          "bash": {
+            "*": "ask",
+            "git status*": "allow",
+            "git diff*": "allow",
+            "git log*": "allow",
+            "pnpm lint*": "allow",
+            "pnpm type-check*": "allow",
+            "pnpm test*": "allow",
+            "pnpm run *": "allow",
+            "pnpm --filter *": "allow",
+            "pnpm exec *": "allow",
+            "cargo check*": "allow",
+            "cargo test*": "allow",
+            "cargo build*": "allow"
+          },
+          "webfetch": "deny"
+        }
+      },
+      "claude": {
+        "tools": "Read, Grep, Glob, Edit, Write, Bash",
+        "model": "sonnet",
+        "permissionMode": "acceptEdits"
+      }
+    },
+    "tester": {
+      "description": "Writes and runs tests, and reports failures verbatim. Use to verify changes before review.",
+      "opencode": {
+        "mode": "subagent",
+        "model": "opencode-go/glm-5.3-flash",
+        "temperature": 0.1,
+        "steps": 40,
+        "permission": {
+          "edit": "allow",
+          "bash": {
+            "*": "ask",
+            "git status*": "allow",
+            "git diff*": "allow",
+            "git log*": "allow",
+            "pnpm format*": "allow",
+            "pnpm lint*": "allow",
+            "pnpm type-check*": "allow",
+            "pnpm test*": "allow",
+            "pnpm run *": "allow",
+            "pnpm --filter *": "allow",
+            "pnpm exec *": "allow",
+            "cargo check*": "allow",
+            "cargo test*": "allow",
+            "cargo fmt*": "allow"
+          },
+          "webfetch": "deny"
+        }
+      },
+      "claude": {
+        "tools": "Read, Grep, Glob, Edit, Write, Bash",
+        "model": "haiku",
+        "permissionMode": "acceptEdits"
+      }
+    },
+    "reviewer": {
+      "description": "Reviews a diff for spec compliance, correctness, and regressions. Read-only.",
+      "opencode": {
+        "mode": "subagent",
+        "model": "opencode-go/glm-5.3",
+        "temperature": 0.1,
+        "steps": 20,
+        "permission": {
+          "edit": "deny",
+          "bash": { "*": "deny", "git status*": "allow", "git diff*": "allow", "git log*": "allow" },
+          "webfetch": "deny"
+        }
+      },
+      "claude": {
+        "tools": "Read, Grep, Glob, Bash",
+        "disallowedTools": "Edit, Write",
+        "model": "sonnet"
+      }
+    },
+    "security": {
+      "description": "Audits changes for security and privacy issues, including secrets, injection, authz, and data egress. Read-only.",
+      "opencode": {
+        "mode": "subagent",
+        "model": "opencode-go/glm-5.3",
+        "temperature": 0.1,
+        "steps": 20,
+        "permission": {
+          "edit": "deny",
+          "bash": { "*": "deny", "git status*": "allow", "git diff*": "allow", "git log*": "allow" },
+          "webfetch": "deny"
+        }
+      },
+      "claude": {
+        "tools": "Read, Grep, Glob, Bash",
+        "disallowedTools": "Edit, Write",
+        "model": "sonnet"
+      }
+    },
+    "scribe": {
+      "description": "Updates documentation to match implemented changes. No shell access.",
+      "opencode": {
+        "mode": "subagent",
+        "model": "opencode-go/glm-5.3-flash",
+        "temperature": 0.2,
+        "steps": 10,
+        "permission": { "edit": "allow", "bash": "deny", "webfetch": "deny" }
+      },
+      "claude": {
+        "tools": "Read, Grep, Glob, Edit, Write",
+        "disallowedTools": "Bash",
+        "model": "haiku"
+      }
+    }
+  },
+  "commands": {
+    "build": {
+      "description": "Implement an approved plan slice",
+      "opencode": { "agent": "coder", "subtask": true },
+      "claude": { "agent": "coder", "allowed-tools": "Read, Grep, Glob, Edit, Write, Bash" }
+    },
+    "plan": {
+      "description": "Produce an implementation plan from a request or spec",
+      "opencode": { "agent": "planner", "subtask": true },
+      "claude": { "agent": "planner", "allowed-tools": "Read, Grep, Glob, Write, Edit" }
+    },
+    "review": {
+      "description": "Review changes for spec compliance and quality",
+      "opencode": { "agent": "reviewer", "subtask": true },
+      "claude": { "agent": "reviewer", "allowed-tools": "Read, Grep, Glob, Bash" }
+    },
+    "spec": {
+      "description": "Capture a request as a reviewable spec",
+      "opencode": { "agent": "planner", "subtask": true },
+      "claude": { "agent": "planner", "allowed-tools": "Read, Grep, Glob, Write, Edit, Bash" }
+    },
+    "verify": {
+      "description": "Run the verification ladder and report failures",
+      "opencode": { "agent": "tester", "subtask": true },
+      "claude": { "agent": "tester", "allowed-tools": "Read, Grep, Glob, Bash" }
+    }
+  }
+}

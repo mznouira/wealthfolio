@@ -36,3 +36,6 @@ skill covers environment setup.
 - Report failures verbatim with file:line and the exact repro command.
 - Never weaken, skip, or delete a test to make it pass.
 - Treat unverified work as incomplete.
+- If a check needs a human (UI, a real file, terminal focus, hardware), don't
+  skip it silently and don't wait for one — append a dated, numbered entry to
+  `docs/factory/NEEDS-HUMAN.md` and continue the ladder.
