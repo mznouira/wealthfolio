@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 
 import { AppLayout } from "@/pages/layouts/app-layout";
@@ -54,6 +54,10 @@ import GoalsDashboardPage from "@/features/goals/pages/goals-dashboard-page";
 import GoalNewPage from "@/features/goals/pages/goal-new-page";
 import GoalDetailPage from "@/features/goals/pages/goal-detail-page";
 import GoalRetirementGuidePage from "@/features/goals/pages/goal-retirement-guide-page";
+
+const PdfWorkerProbePage = import.meta.env.DEV
+  ? lazy(() => import("@/features/statements/dev/pdf-worker-probe-page"))
+  : null;
 
 function NavigationEventBridge() {
   useNavigationEventListener();
@@ -129,6 +133,20 @@ export function AppRoutes() {
               element={<AddonIframeRoute addonId={addonId} routeId={routeId} />}
             />
           ))}
+          {/* Dev-only diagnostic routes */}
+          {import.meta.env.DEV && PdfWorkerProbePage !== null
+            ? [
+                <Route
+                  key="dev-statements-pdf"
+                  path="dev/statements-pdf"
+                  element={
+                    <Suspense fallback={null}>
+                      <PdfWorkerProbePage />
+                    </Suspense>
+                  }
+                />,
+              ]
+            : []}
           <Route path="settings" element={<SettingsLayout />}>
             <Route index element={<GeneralSettingsPage />} />
             <Route path="general" element={<GeneralSettingsPage />} />

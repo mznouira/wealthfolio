@@ -1,0 +1,352 @@
+# Statements — tailored PDF import for Wealthfolio (fork)
+
+Status: **WP-0 in progress** (fork bootstrapped; docs persisted). Owner: Zied
+Nouira (`mznouira`). Fork: `git@github.com:mznouira/wealthfolio.git`, branch
+`zied/statements`. Upstream: `wealthfolio/wealthfolio` (remote `upstream`).
+
+This is the durable plan for a thin, upstream-tracking fork of Wealthfolio whose
+purpose is to parse the owner's PDF account statements, reconcile them against
+the statement's own printed balances, and import them into Wealthfolio's
+**Spending** module. It is written so a fresh agent session in this repository
+can pick the work up with no other context.
+
+> Naming: the feature and every artifact is called **statements** (English).
+> "Relevé" is only how the owner's banks label the PDF; it is never used as a
+> code or doc name.
+
+---
+
+## 1. Goal
+
+- Parse a statement PDF (starting with the Desjardins deposit statement),
+  reconcile it, and import its lines as Wealthfolio activities.
+- Reuse Wealthfolio's expense/income/saving taxonomies; enrich with a custom
+  vocabulary **later**.
+- Automate ingestion: start from a local folder the owner copies files into; add
+  Google Drive intake later.
+
+## 2. Non-goals
+
+- No OCR. The statements carry a real text layer.
+- No bank-login scraping, no aggregator/brokerage sync, no
+  `Wealthfolio Connect`.
+- Not an addon (the addon sandbox cannot read local files); not an external tool
+  that emits CSV or writes the SQLite DB directly.
+- No Google Drive API in v1.
+- No rewrite of Wealthfolio core.
+
+## 3. Locked decisions
+
+| #   | Decision                                                                                                                     | Rationale                                                                                                    |
+| --- | ---------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| D1  | **Thin fork**, rebased onto upstream; aim to propose the generic seam upstream.                                              | Keep upstream features; own the whole ingestion path.                                                        |
+| D2  | Parser is **TypeScript, framework-free**, in `packages/statement-parsers`.                                                   | Reuses the portage parser, matches the frontend, and is the only realistic path to an upstream contribution. |
+| D3  | PDF text via `pdfjs-dist`, reconstructed into **positioned columns**.                                                        | Statements are right-aligned tables; whitespace alone is unreliable.                                         |
+| D4  | **PDF for every account**; the portage Desjardins **CSV** parser is kept as a secondary source.                              | Owner's intake is PDF, but the verified CSV path should not be thrown away.                                  |
+| D5  | **Reconciliation is a hard gate**: opening + Σ(± lines) = closing per product/section, else reject with a visible reason.    | Only check that catches parser drift and a hash collision silently merging rows.                             |
+| D6  | A credit-card **payment** is a **transfer pair** (chequing out ↔ card in); a card purchase is an expense.                    | Prevents double-counting spend.                                                                              |
+| D7  | Dedup via the portage **content hash** mapped to Wealthfolio's `idempotency_key`, plus `source_system` / `source_record_id`. | Re-importing the same statement must insert zero rows.                                                       |
+| D8  | Reuse Wealthfolio's `expense` taxonomy; the parser **proposes** merchant→category rules the user confirms.                   | One vocabulary in one place; enrich later.                                                                   |
+| D9  | v1 intake: **watched local folder** + drag-and-drop. Google Drive OAuth is parked for a later WP.                            | Fastest path to near-zero touch; Drive needs a GCP project and consent screen.                               |
+| D10 | Real statements are **never committed**; synthetic fixtures only; a local `statements/` folder is gitignored.                | Repo can go public; upstream is public.                                                                      |
+
+## 4. Architecture
+
+- **Fork layout** (all our code stays in existing upstream seams + one new
+  package and one new frontend feature):
+  - `packages/statement-parsers/` — new workspace package: the `StatementSource`
+    seam, text/decimal/date/hash helpers, and one parser per institution.
+  - `apps/frontend/src/features/statements/` — the import flow that consumes the
+    package and produces Wealthfolio `ActivityImport[]`.
+- **Flow**: PDF bytes → pdfjs text layer → positioned lines → institution parser
+  → `RawTransaction[]` (+ reconciliation) → account mapping → `ActivityImport[]`
+  → Wealthfolio check → review grid → import.
+- **Dedup**: `import_hash` (accent-folded, versioned) → `idempotency_key`.
+- **Isolation**: keep the patch series small and additive; no edits to upstream
+  files unless required, and when required, minimal and clearly scoped.
+
+## 5. Work packages
+
+| WP   | Title                                                                   | Status   | Depends on         |
+| ---- | ----------------------------------------------------------------------- | -------- | ------------------ |
+| WP-0 | Fork bootstrap + persist docs                                           | **done** | —                  |
+| WP-1 | Parser core package (port from portage) + spike notes                   | **done** | WP-0               |
+| WP-2 | PDF → positioned text (`pdfjs-dist`)                                    | **done** | WP-1               |
+| WP-3 | Desjardins deposit statement parser + reconciliation                    | **done** | WP-2               |
+| WP-4 | Wealthfolio import integration (frontend)                               | pending  | WP-3               |
+| WP-5 | Credit-card parsers (Desjardins Visa, CIBC Costco MC) + payment pairing | pending  | WP-4, card samples |
+| WP-6 | Intake automation: watched folder (v1), Drive OAuth (parked)            | pending  | WP-4               |
+| WP-7 | Upstream readiness: generic seam behind a flag, design issue/PR         | pending  | WP-5               |
+
+### WP-0 — Fork bootstrap (current)
+
+- [x] Fork `wealthfolio/wealthfolio` → `mznouira/wealthfolio`.
+- [x] Clone to `/home/zied/Projects/wealthfolio`.
+- [x] `upstream` remote added; tags fetched.
+- [x] Branch `zied/statements` created.
+- [x] `pnpm@10.33.4` installed; `pnpm install` green.
+- [x] Persist `docs/statements/` (this plan, glossary, protocol, manual tests)
+      and the `statements` skill.
+- [x] Rust toolchain + Tauri system deps (installed 2026-09-14; `pnpm tauri dev`
+      owner-verified; see §8).
+- [x] Locate and document the activity/CSV import feature and its interfaces.
+
+### WP-1 — Parser core + spike
+
+Port from `/home/zied/Projects/portage` (frozen reference):
+
+- `types.ts` — `StatementSource` seam, `RawTransaction`, `CalendarDate`,
+  `Money`, `ImportProblem`, `ImportBatch`.
+- `text.ts` — CP1252/ASCII detection + decode, whitespace collapse, account
+  masking.
+- `decimal.ts`, `dates.ts` (incl. French month abbreviations and the year taken
+  from the statement period), `csv.ts`, `hash.ts`.
+- Port the verified Desjardins **CSV** source as a secondary source.
+- Spike notes (`docs/statements/NOTES.md`): (1) Wealthfolio sign/spending
+  semantics for `CREDIT_CARD` accounts; (2) `pdfjs-dist` worker under
+  Vite/Tauri; (3) arbitrary-path read via `@tauri-apps/plugin-fs`.
+
+### WP-2 — PDF → positioned text
+
+Load bytes with `pdfjs-dist`; reconstruct
+`PageLine[] { page, y, cells: {x,text}[] }` from text items so right-aligned
+money lands in the correct column; handle multi-page output. Tested against the
+local sample (outside the repo) plus a synthetic fixture.
+
+### WP-3 — Desjardins deposit statement parser
+
+Sections/products `EOP`, `ET`, `CS`, `ES`; columns
+`Date | Code | Description | Frais | Retrait | Dépôt | Solde`; wrapped
+descriptions; `Solde reporté` opening line. **Reconciliation gate per product.**
+Golden tests; cross-check against the CSV parser where the same month exists.
+Real-sample geometry recorded 2026-09-14 (owner-run, 2026-01 EOP): see NOTES §S4
+— period decimals, `D MON` dates, date+code cell merging, pitch 11.95; sample
+kept locally in `/statements/` for this session.
+
+**Done 2026-09-15** — see `docs/specs/wp3-desjardins-pdf-parser.md` (W3-D1..D12)
+for the full design record. `DesjardinsPdfSource` lives in a new
+`src/desjardins-pdf.ts`, its own subpath export (`./desjardins-pdf`) so
+`src/pdf/` and the main `.` entry both stay generic/zero-dep. Column assignment
+is derived from each header row's own cell positions, never hardcoded;
+Date/Code/Description are split by content (regex) rather than by geometry,
+since S4 found they merge at real spacing. Reconciliation (D5) is a hard
+per-product gate. A second, Desjardins-specific synthetic generator
+(`generate-desjardins.ts`) was added rather than upgrading WP-2's `generate.ts`
+in place, to avoid re-doing that frozen golden test's review.
+
+### WP-4 — Wealthfolio import integration
+
+Add a "Statement (PDF)" source to the import flow; resolve the parsed account
+key (masked folio+product, or card last-4) to a Wealthfolio account and persist
+the mapping; map to `ActivityImport`; set `source_system` / `source_record_id` /
+`idempotency_key`; surface reconcile status and rejects in the review grid;
+reuse the spending taxonomy and propose merchant→category rules. Verify
+re-import inserts zero.
+
+### WP-5 — Credit-card parsers
+
+Desjardins Visa statement and CIBC Costco Mastercard statement (samples
+pending). Card purchase = expense; card payment = transfer pair; per-statement
+reconciliation; assert no double-count in spending.
+
+### WP-6 — Intake automation
+
+v1: watch a local folder (Rust `notify`) + drag-and-drop, settings for folder
+and account mapping, rescan dedup. **Parked**: Google Drive OAuth (needs Google
+Cloud project + consent screen; tokens in the OS keyring).
+
+### WP-7 — Upstream readiness
+
+Isolate a generic `StatementSource` seam plus one reference parser behind a
+flag; write it up; open an upstream design issue/PR proposing a statement-import
+extension point. Gate: the patch rebases onto a newer upstream tag.
+
+## 6. Domain vocabulary
+
+See [`CONTEXT.md`](CONTEXT.md). Summary: a **statement** is the PDF; a
+**statement line** is a row in it; an **activity** is the Wealthfolio record we
+create; an **expense** is a `WITHDRAWAL` assigned to the `expense` taxonomy (not
+a separate type); the **account key** is the institution's masked account
+identity; **reconciliation** is `opening + Σ lines = closing`; a **transfer
+pair** links a chequing debit to a card credit.
+
+## 7. Verification / gates
+
+- TypeScript: `pnpm test` (vitest), `pnpm lint`, `pnpm type-check`.
+- Rust (toolchain installed 2026-09-14): `cargo test`, `cargo clippy` — run when
+  Rust is touched.
+- Parser package: unit tests + **golden fixtures** (synthetic) + a hard
+  reconciliation assertion.
+- Manual: anything CI cannot reach (real PDFs, folder intake, review grid) is
+  recorded in [`MANUAL-TESTS.md`](MANUAL-TESTS.md). The first item of any change
+  that can capture a terminal/screen/focus must be how to leave it and recover.
+- Privacy: never commit a real statement, account number, or balance.
+
+## 8. Environment / toolchain notes
+
+Checked 2026-09-13 on Omarchy/Arch; Rust updated 2026-09-14:
+
+- `gh` authenticated as `mznouira` (`repo` scope) — fork and PRs are possible.
+- Node 26.8.1 via mise; **corepack is absent** on this Node; `pnpm@10.33.4` was
+  installed with `npm install -g pnpm@10.33.4` (user prefix under mise).
+- **Rust installed 2026-09-14** (owner): rustc 1.95.0 (59807616e 2026-04-14),
+  cargo 1.95.0 (f2d3ce0bd 2026-03-21), clippy 0.1.95 (59807616e1 2026-04-14);
+  `rust-toolchain.toml` pins `1.95.0`. Owner verified `pnpm tauri dev` works
+  end-to-end (Tauri system deps OK).
+- `pnpm install` warns that `@swc/core` build scripts were skipped; run
+  `pnpm approve-builds` if a build needs them.
+- Frontend-only work (parser package + vitest) does **not** need Rust; the
+  import backend and desktop app do.
+- WP-2 additions (2026-09-14): `pdfjs-dist` 6.3.289 (exact-pinned; first runtime
+  dep of statement-parsers, `./pdf` subpath only) and `pdf-lib` ^1.17.1 (devDep,
+  synthetic fixture generator). Node 26 runs the generator's erasable-TS
+  directly (`node tests/fixtures/pdf/generate.ts`).
+
+## 9. Open questions / risks
+
+- Wealthfolio sign and spending semantics for `CREDIT_CARD` accounts (WP-1
+  spike) — **resolved (WP-1)**: `NOTES.md` S1.
+- Exact location/interfaces of the activity/CSV import feature (WP-1) —
+  **resolved (WP-1)**: `NOTES.md` S1 + WP-4 note.
+- `pdfjs-dist` worker bundling under Vite/Tauri settings (WP-2) — **resolved
+  (WP-2)**: worker wired via `?worker` → `workerPort`, dev-server smoke green;
+  Tauri/dev:web runtime checks are MANUAL-TESTS WP-2 items (owner-run).
+- French dates + wrapped descriptions + one file carrying several products
+  (WP-3) — **resolved (WP-3)**: `desjardins-pdf.ts` + `dates.ts`'s
+  `parseFrenchDayMonth`; see `docs/specs/wp3-desjardins-pdf-parser.md`. Two
+  sub-parts remain flagged, not fully resolved: French month abbreviations
+  beyond January and the `SJ ###-#####-#` account-reference wording are both
+  unverified against a real statement (`docs/factory/NEEDS-HUMAN.md`).
+- Overlap/dedup across monthly statements (WP-3/WP-4) — WP-3's D4 cross-check
+  (PDF vs. CSV agreement on paired synthetic fixtures) is done; cross-month
+  dedup itself is still WP-4 (hashing/idempotency wiring).
+- Card statement grammars — need the Desjardins Visa and CIBC Costco Mastercard
+  PDFs (WP-5).
+- Google Drive OAuth effort (WP-6, parked).
+- Upstream AGPL-3.0 and whether the maintainer accepts the seam (WP-7).
+
+## 10. Session log
+
+- **2026-09-13** — Planning complete (grilling + domain modeling). Decided: thin
+  fork, TS parser package, PDF for all accounts, reconciliation as a hard gate,
+  card payments as transfer pairs, local-folder intake then Drive. Bootstrapped
+  the fork and persisted these docs. **Next:** install the Rust toolchain +
+  Tauri deps (with the owner, needs sudo), then WP-1 (port the parser core from
+  portage and write the spike notes). **Broken/blocked:** Rust and
+  `libappindicator-gtk3` not installed.
+- **2026-09-14** — WP-1 done: parser core ported to
+  `packages/statement-parsers/` (8 modules + `sha256.ts` + trimmed barrel),
+  Desjardins source converted to bytes-based `StatementSource`, 84 tests across
+  6 test files, reconciliation hard gate green, 10 synthetic fixtures ported
+  byte-for-byte (spec said 9; portage held 10); dropped portage's "missing file
+  rejects" test because A2 removed path I/O; the CP1252 test row is
+  byte-identical to portage's (14 fields — an earlier report miscounted and
+  claimed an adaptation that did not occur). `docs/statements/NOTES.md` written
+  (S1–S3 + WP-4 consumption note), `PLAN.md` updated. Root test gate wired
+  (`package.json` test script + `.prettierignore` fixture-dir exclusion).
+  `MANUAL-TESTS.md`: no additions — WP-1 has no UI / real-PDF / folder-intake
+  surface. **Next:** WP-2 (pdfjs-dist → positioned text). **Broken/blocked:**
+  pre-existing frontend test debt — 29 deterministic failures
+  (`window.localStorage` undefined in jsdom: performance-page 14,
+  holdings-toolbar-order 7, spending-insights-page 8) plus variable timeout
+  flake (total fluctuates 33–44 across runs); verified pre-existing at `69fedca`
+  via baseline worktree rerun; environmental, needs its own ticket. Rust
+  toolchain still absent.
+- **2026-09-14 (later)** — Owner installed the Rust toolchain; `pnpm tauri dev`
+  verified working. §8 + WP-0 updated (WP-0 now fully done); cargo gates
+  available from here on (run when Rust is touched; a one-time `cargo check`
+  baseline is queued for the WP-2 session). `docs/specs/wp2-session-prompt.md`
+  updated to match. **Next:** WP-2 (pdfjs-dist → positioned text), prompt ready.
+- **2026-09-14 (later still)** — WP-2 done: PDF layer in
+  `packages/statement-parsers/src/pdf/` (`./pdf` subpath export;
+  `extractPageLines` → `PageLine[]`), pure reconstruction (`lines.ts`, 13 unit
+  tests), deterministic synthetic fixture generator (pdf-lib, committed script,
+  44 rows / 6 wrapped descriptions over 2 pages), true end-to-end golden test
+  (pdf-lib bytes → real pdfjs → reconstruction, frozen reviewed literal + 4
+  property assertions), dev-only probe route `/dev/statements-pdf`. Package
+  suite 8 files / 98 tests (84 pre-existing + 14 new); `pnpm lint`,
+  `pnpm type-check`, `pnpm format:check` green. Key decisions/deviations:
+  pdfjs-dist exact-pinned 6.3.289 (first runtime dep; `./pdf` subpath keeps the
+  main entry zero-dep); worker via static `?worker` import → `workerPort`
+  singleton, browser-guarded dynamic import, main-thread fake-worker fallback;
+  vitest plan B activated (package vitest.config aliases pdfjs-dist to
+  `legacy/build/pdf.mjs` — standard build not Node-supported; real pdfjs, no
+  mocking); `optimizeDeps.include` NOT added (unresolvable from apps/frontend
+  under pnpm's strict layout — deviation from the spec sketch; dev-server smoke
+  validated scanner discovery); `standardFontDataUrl` trialled and removed as
+  ineffective; generator exceeds the spec's soft content counts — accepted.
+  Records: cargo check baseline PASS (10m 8s, 0 errors, first compile); web
+  build has zero pdfjs markers in the main chunk and zero dead pdfjs chunks in
+  dist (review fixes); dev-server smoke all-200 including the worker module; no
+  `pnpm audit --prod` vulnerabilities; reviewer's 6 minor findings all fixed in
+  `9237ebb73`; security verdict SHIP-WITH-NITS (privacy mechanically verified;
+  CVE-2026-16633 does not affect 6.3.289; input size/page cap deferred to the
+  WP-4 import seam). Flagged gap: no real statement sample exists — generator
+  geometry and both tolerances are synthetic; WP-3 re-checks them against a real
+  PDF (MANUAL-TESTS WP-2 item 4 collects the evidence). **Next:** WP-3
+  (Desjardins deposit parser + reconciliation; ideally after the owner runs
+  MANUAL-TESTS items 1–4 and shares real geometry). **Broken/blocked:** none —
+  manual items 1–4 pending owner run.
+- **2026-09-14 (owner manual tests)** — MANUAL-TESTS WP-2 items 1–3 run, all
+  pass: `worker-port` badge on both runtimes (Tauri custom protocol + CSP, and
+  plain browser), 54/54 lines matching golden, console clean, worker reuse OK.
+  Item 3 initially failed environmentally — no `.env.web`, server secret-key
+  panic (`apps/server/src/config.rs:63`); item 3's command amended with the
+  one-time setup step (first-occurrence-wins loader gotcha recorded). Item 4
+  (real-sample geometry) pending, owner runs next. Startup "Syncing market
+  data…/Calculating portfolio performance…" spinners observed and explained:
+  pre-existing portfolio-sync behavior (`portfolio-sync-context.tsx`,
+  `use-global-event-listener.ts`), untouched by the branch. **Next:** WP-3
+  (Desjardins deposit parser + reconciliation; unblocked — item 4's real
+  geometry still valuable when available). **Broken/blocked:** none.
+- **2026-09-14 (item 4, real sample)** — MANUAL-TESTS WP-2 item 4 run: pass. A
+  real 2026-01 EOP statement reconstructs: 7-cell header found, amounts in
+  correct right-aligned columns, opening `Solde reporté` row correct. Geometry +
+  format evidence recorded PII-free in NOTES §S4 (key deltas vs the generator:
+  period decimals, `D MON` dates, date+code cell merging, pitch 11.95,
+  text-column x positions; money right edges nearly exact). The sample was
+  briefly placed in `docs/statements/` (tracked tree) by mistake — untracked
+  throughout, no leak; moved to gitignored `/statements/` and retained there as
+  WP-3 input; delete after WP-3 re-derives the synthetic fixture. **Next:** WP-3
+  with real-sample evidence in hand. **Broken/blocked:** none.
+- **2026-09-15** — WP-3 done: Desjardins deposit-statement PDF parser +
+  reconciliation. Spec: `docs/specs/wp3-desjardins-pdf-parser.md` (W3-D1..D12,
+  full rationale). New `packages/statement-parsers/src/desjardins-pdf.ts`
+  (`DesjardinsPdfSource` + pure `parseDesjardinsPdfLines`), its own subpath
+  export `./desjardins-pdf` — not re-exported from `.` or folded into `./pdf`,
+  so both stay generic/zero-dep (W3-D1). Two minimal, declared `types.ts` edits:
+  `SourceFormat` gains `"pdf"`, `ImportProblemCode` gains
+  `"reconciliation_failed"` (W3-D2) — both generic, not Desjardins-specific.
+  `dates.ts` gains `parseFrenchDayMonth` + French month tables (W3-D10). Column
+  assignment is derived from each header row's own cell x-positions (never
+  hardcoded); Date/Code/Description are split by content (regex), not geometry,
+  because S4 found they merge at real spacing (W3-D3/D4). Wrapped descriptions,
+  product markers (`EOP`/`ET`/`CS`/`ES`), header-repeat vs. new-product
+  detection, and the reconciliation hard gate (opening + Σlines = closing,
+  rejecting the whole product on failure, never a warning) are all covered by 23
+  hand-built-`PageLine[]` unit tests in `tests/desjardins-pdf.test.ts` plus a
+  real-pdfjs end-to-end golden test (`tests/pdf-golden-desjardins.test.ts`)
+  against a new, Desjardins-specific generator
+  (`tests/fixtures/pdf/generate-desjardins.ts`) — WP-2's own
+  `generate.ts`/`pdf-golden.test.ts` are untouched (W3-D11: upgrading them in
+  place would have broken that frozen, semantically-reviewed literal). A D4
+  cross-check test pairs a small synthetic CSV fixture with a matching
+  PDF-grammar fixture and asserts the two sources agree on date/amount. Probe
+  page (`pdf-worker-probe-page.tsx`) extended, same dev-only route, to also run
+  the new parser and show transactions + per-product reconcile status (W3-D12).
+  Package suite: 10 files / 127 tests (98 prior + 29 new), all green.
+  Deviations/flags recorded in the spec and `docs/factory/NEEDS-HUMAN.md`:
+  French month abbreviations beyond January are unverified; the `SJ ###-#####-#`
+  account-reference wording (and which part is "the folio") is unverified — the
+  real sample was already gone before this session started (`ls statements/` →
+  not found), so neither could be checked against a fresh file this time. Gates:
+  root `pnpm type-check` green (after `pnpm run build:types`, which the
+  frontend's own type-check depends on); root `pnpm format:check` green for
+  every file this WP touched (12 pre-existing warnings in unrelated
+  `.claude/`/`.opencode/`/`.factory/` agent-tooling files predate this session —
+  confirmed via `git diff`, out of scope per this issue's own branch note).
+  `pnpm lint` recorded once it finishes. No Rust touched. **Next:** WP-4
+  (Wealthfolio import integration) — the `RawTransaction[]`/`ImportBatch` shape
+  this WP produces is what WP-4 maps to `ActivityImport`. **Broken/blocked:**
+  none; the two flagged wording assumptions above are non-blocking gaps for the
+  next real-PDF manual run, not open defects.

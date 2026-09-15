@@ -1,12 +1,41 @@
 {
+  "permissions": {
+    "allow": [
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(pnpm format*)",
+      "Bash(pnpm lint*)",
+      "Bash(pnpm type-check*)",
+      "Bash(pnpm test*)",
+      "Bash(pnpm run *)",
+      "Bash(pnpm --filter *)",
+      "Bash(pnpm exec *)",
+      "Bash(cargo check*)",
+      "Bash(cargo test*)",
+      "Bash(cargo build*)",
+      "Bash(cargo fmt*)"
+    ]
+  },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/factory-guard.mjs\" hook"
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "bash -c 'file_path=$(jq -r \".tool_input.file_path // empty\" 2>/dev/null); if [[ -n \"$file_path\" && -f \"$file_path\" ]]; then if [[ \"$file_path\" == *.rs ]]; then rustfmt --edition 2021 \"$file_path\" 2>/dev/null || true; elif [[ \"$file_path\" =~ \\.(ts|tsx|js|jsx|css|md)$ ]]; then npx prettier --write \"$file_path\" 2>/dev/null || true; fi; fi'"
+            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/factory-guard.mjs\" hook"
           }
         ]
       }

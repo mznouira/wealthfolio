@@ -165,6 +165,21 @@ Before completing any task:
 
 ---
 
+## Model Selection
+
+Agent model tiers and the full rationale live in
+`.opencode/skills/model-selection/SKILL.md`. Read it before adding an agent or
+when a new model ships. Current tiers:
+
+| Role                          | Model                        |
+| ----------------------------- | ---------------------------- |
+| orchestrator, planner         | `opencode-go/glm-5.2`        |
+| coder                         | `opencode-go/kimi-k2.7-code` |
+| reviewer, security            | `opencode-go/glm-5.3`        |
+| tester, scribe, `small_model` | `opencode-go/glm-5.3-flash`  |
+
+---
+
 ## Plan Mode
 
 - Make plans extremely concise. Sacrifice grammar for brevity.

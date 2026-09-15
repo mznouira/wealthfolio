@@ -115,9 +115,15 @@ Thumbs.db
 .codex/
 .kiro/
 .conductor/
+.worktrees/
 db/
 apps/db/
 apps/tauri/db/
 tasks
 **/*.local.md
 wealthfolio.db
+
+# Statements (fork) — local downloaded statements are never committed
+/statements/
+# Never stage a real statement PDF inside the parser fixtures
+packages/statement-parsers/tests/fixtures/**/*.pdf
