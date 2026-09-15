@@ -4,7 +4,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./pdf": "./src/pdf/index.ts"
+    "./pdf": "./src/pdf/index.ts",
+    "./desjardins-pdf": "./src/desjardins-pdf.ts"
   },
   "scripts": {
     "test": "vitest run",

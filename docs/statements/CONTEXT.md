@@ -21,6 +21,13 @@ The shared language for the statements feature in this fork. This file is a
   balance chain (for example a chequing section versus a savings section on one
   Desjardins statement). Each product reconciles independently.
 
+- **Balance chain** — one product's opening balance, its statement lines in
+  order, and its closing balance, linked by the rule that each line's signed
+  amount moves the running balance to the next line's own printed balance.
+  Reconciliation (below) is the assertion that a balance chain is unbroken end
+  to end; a parser groups lines into balance chains before it can check that
+  assertion at all.
+
 - **Activity** — Wealthfolio's atomic record of a money or asset movement. The
   unit this feature creates.
 

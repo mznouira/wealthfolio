@@ -72,7 +72,7 @@ can pick the work up with no other context.
 | WP-0 | Fork bootstrap + persist docs                                           | **done** | —                  |
 | WP-1 | Parser core package (port from portage) + spike notes                   | **done** | WP-0               |
 | WP-2 | PDF → positioned text (`pdfjs-dist`)                                    | **done** | WP-1               |
-| WP-3 | Desjardins deposit statement parser + reconciliation                    | pending  | WP-2               |
+| WP-3 | Desjardins deposit statement parser + reconciliation                    | **done** | WP-2               |
 | WP-4 | Wealthfolio import integration (frontend)                               | pending  | WP-3               |
 | WP-5 | Credit-card parsers (Desjardins Visa, CIBC Costco MC) + payment pairing | pending  | WP-4, card samples |
 | WP-6 | Intake automation: watched folder (v1), Drive OAuth (parked)            | pending  | WP-4               |
@@ -122,6 +122,17 @@ Golden tests; cross-check against the CSV parser where the same month exists.
 Real-sample geometry recorded 2026-09-14 (owner-run, 2026-01 EOP): see NOTES §S4
 — period decimals, `D MON` dates, date+code cell merging, pitch 11.95; sample
 kept locally in `/statements/` for this session.
+
+**Done 2026-09-15** — see `docs/specs/wp3-desjardins-pdf-parser.md` (W3-D1..D12)
+for the full design record. `DesjardinsPdfSource` lives in a new
+`src/desjardins-pdf.ts`, its own subpath export (`./desjardins-pdf`) so
+`src/pdf/` and the main `.` entry both stay generic/zero-dep. Column assignment
+is derived from each header row's own cell positions, never hardcoded;
+Date/Code/Description are split by content (regex) rather than by geometry,
+since S4 found they merge at real spacing. Reconciliation (D5) is a hard
+per-product gate. A second, Desjardins-specific synthetic generator
+(`generate-desjardins.ts`) was added rather than upgrading WP-2's `generate.ts`
+in place, to avoid re-doing that frozen golden test's review.
 
 ### WP-4 — Wealthfolio import integration
 
@@ -201,8 +212,14 @@ Checked 2026-09-13 on Omarchy/Arch; Rust updated 2026-09-14:
   (WP-2)**: worker wired via `?worker` → `workerPort`, dev-server smoke green;
   Tauri/dev:web runtime checks are MANUAL-TESTS WP-2 items (owner-run).
 - French dates + wrapped descriptions + one file carrying several products
-  (WP-3).
-- Overlap/dedup across monthly statements (WP-3/WP-4).
+  (WP-3) — **resolved (WP-3)**: `desjardins-pdf.ts` + `dates.ts`'s
+  `parseFrenchDayMonth`; see `docs/specs/wp3-desjardins-pdf-parser.md`. Two
+  sub-parts remain flagged, not fully resolved: French month abbreviations
+  beyond January and the `SJ ###-#####-#` account-reference wording are both
+  unverified against a real statement (`docs/factory/NEEDS-HUMAN.md`).
+- Overlap/dedup across monthly statements (WP-3/WP-4) — WP-3's D4 cross-check
+  (PDF vs. CSV agreement on paired synthetic fixtures) is done; cross-month
+  dedup itself is still WP-4 (hashing/idempotency wiring).
 - Card statement grammars — need the Desjardins Visa and CIBC Costco Mastercard
   PDFs (WP-5).
 - Google Drive OAuth effort (WP-6, parked).
@@ -292,3 +309,44 @@ Checked 2026-09-13 on Omarchy/Arch; Rust updated 2026-09-14:
   throughout, no leak; moved to gitignored `/statements/` and retained there as
   WP-3 input; delete after WP-3 re-derives the synthetic fixture. **Next:** WP-3
   with real-sample evidence in hand. **Broken/blocked:** none.
+- **2026-09-15** — WP-3 done: Desjardins deposit-statement PDF parser +
+  reconciliation. Spec: `docs/specs/wp3-desjardins-pdf-parser.md` (W3-D1..D12,
+  full rationale). New `packages/statement-parsers/src/desjardins-pdf.ts`
+  (`DesjardinsPdfSource` + pure `parseDesjardinsPdfLines`), its own subpath
+  export `./desjardins-pdf` — not re-exported from `.` or folded into `./pdf`,
+  so both stay generic/zero-dep (W3-D1). Two minimal, declared `types.ts` edits:
+  `SourceFormat` gains `"pdf"`, `ImportProblemCode` gains
+  `"reconciliation_failed"` (W3-D2) — both generic, not Desjardins-specific.
+  `dates.ts` gains `parseFrenchDayMonth` + French month tables (W3-D10). Column
+  assignment is derived from each header row's own cell x-positions (never
+  hardcoded); Date/Code/Description are split by content (regex), not geometry,
+  because S4 found they merge at real spacing (W3-D3/D4). Wrapped descriptions,
+  product markers (`EOP`/`ET`/`CS`/`ES`), header-repeat vs. new-product
+  detection, and the reconciliation hard gate (opening + Σlines = closing,
+  rejecting the whole product on failure, never a warning) are all covered by 23
+  hand-built-`PageLine[]` unit tests in `tests/desjardins-pdf.test.ts` plus a
+  real-pdfjs end-to-end golden test (`tests/pdf-golden-desjardins.test.ts`)
+  against a new, Desjardins-specific generator
+  (`tests/fixtures/pdf/generate-desjardins.ts`) — WP-2's own
+  `generate.ts`/`pdf-golden.test.ts` are untouched (W3-D11: upgrading them in
+  place would have broken that frozen, semantically-reviewed literal). A D4
+  cross-check test pairs a small synthetic CSV fixture with a matching
+  PDF-grammar fixture and asserts the two sources agree on date/amount. Probe
+  page (`pdf-worker-probe-page.tsx`) extended, same dev-only route, to also run
+  the new parser and show transactions + per-product reconcile status (W3-D12).
+  Package suite: 10 files / 127 tests (98 prior + 29 new), all green.
+  Deviations/flags recorded in the spec and `docs/factory/NEEDS-HUMAN.md`:
+  French month abbreviations beyond January are unverified; the `SJ ###-#####-#`
+  account-reference wording (and which part is "the folio") is unverified — the
+  real sample was already gone before this session started (`ls statements/` →
+  not found), so neither could be checked against a fresh file this time. Gates:
+  root `pnpm type-check` green (after `pnpm run build:types`, which the
+  frontend's own type-check depends on); root `pnpm format:check` green for
+  every file this WP touched (12 pre-existing warnings in unrelated
+  `.claude/`/`.opencode/`/`.factory/` agent-tooling files predate this session —
+  confirmed via `git diff`, out of scope per this issue's own branch note).
+  `pnpm lint` recorded once it finishes. No Rust touched. **Next:** WP-4
+  (Wealthfolio import integration) — the `RawTransaction[]`/`ImportBatch` shape
+  this WP produces is what WP-4 maps to `ActivityImport`. **Broken/blocked:**
+  none; the two flagged wording assumptions above are non-blocking gaps for the
+  next real-PDF manual run, not open defects.

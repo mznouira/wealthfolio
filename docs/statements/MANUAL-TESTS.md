@@ -102,4 +102,38 @@ browser.
 
 ---
 
+## WP-3 — Desjardins deposit-statement PDF parser + reconciliation
+
+Added 2026-09-15. The package tests cover the grammar, section detection, and
+the reconciliation hard gate against hand-built fixtures and a real-pdfjs golden
+test; this item covers what only a real bank PDF can prove: that the S4-derived
+assumptions (header wording, `SJ ###-#####-#` account reference, French month
+abbreviations beyond January) still hold. Leaving `pnpm tauri dev` and
+recovering is WP-2 item 1 above — this item introduces no new terminal-capturing
+step.
+
+1. Owner-only, real-PDF parse + reconcile via the probe (either runtime — WP-2
+   items 2/3 cover reaching `/dev/statements-pdf`). **Command:** put a real
+   Desjardins deposit-statement PDF in the gitignored `statements/` folder, open
+   the probe page, load the file. **Pass:** the "Desjardins PDF parse" section
+   shows one row per account with "reconciled" (green) for every product on the
+   statement, `problems: 0`, and the transaction table's dates land in the
+   calendar month the statement covers (spot-check a few against the printed
+   statement). **Failure:** any account shows "reconcile FAILED" (red) or the
+   problems list is non-empty — record the exact problem messages and which row
+   triggered them; note whether it's a date issue (month abbreviation table
+   gap), an account-reference regex miss (masked `accountRef` looks wrong or is
+   `null`), or a genuine column-geometry surprise the header-derived boundaries
+   didn't handle. Privacy: never commit the file, never screenshot it; delete it
+   afterwards, per the fork's privacy rule.
+2. If item 1 fails on a month other than January: the row date will show as
+   `invalid_date` in the problems list rather than crashing (W3-D7's decoupling
+   — the amount still counts toward reconciliation). **Pass/fail signal:** this
+   confirms the specific gap is the month abbreviation table
+   (`FRENCH_MONTH_ABBREVIATIONS` in `src/dates.ts`), not a deeper parsing bug —
+   reconciliation should still show green even with `invalid_date` problems
+   present. Record the real abbreviation seen (e.g. does Desjardins print `FÉVR`
+   instead of `FÉV`?) so `dates.ts` can be corrected precisely instead of
+   guessed again.
+
 <!-- Add new sections below, most recent first. -->

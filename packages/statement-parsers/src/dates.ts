@@ -89,3 +89,72 @@ export function parseOfxDate(raw: string): CalendarDate | null {
   if (text.length < 8) return null;
   return parseDeclaredDate(text.slice(0, 8), "YYYYMMDD");
 }
+
+// ---------------------------------------------------------------------------
+// French dates (WP-3: Desjardins PDF statements)
+// ---------------------------------------------------------------------------
+
+/**
+ * `D MON` row dates, e.g. `1 JAN`, `15 FÉV` — confirmed against a real Desjardins
+ * PDF statement for January only (`docs/statements/NOTES.md` S4). The other eleven
+ * abbreviations are the standard Québec 3-letter scheme and are UNVERIFIED against
+ * a real statement; flagged in `docs/factory/NEEDS-HUMAN.md`. Extend deliberately,
+ * the same discipline `DateFormat` above already follows.
+ */
+export const FRENCH_MONTH_ABBREVIATIONS: Readonly<Record<string, number>> = {
+  JAN: 1,
+  FÉV: 2,
+  MAR: 3,
+  AVR: 4,
+  MAI: 5,
+  JUN: 6,
+  JUL: 7,
+  AOU: 8,
+  AOÛT: 8,
+  SEP: 9,
+  OCT: 10,
+  NOV: 11,
+  DEC: 12,
+  DÉC: 12,
+};
+
+/**
+ * Full French month names, as they appear in a Desjardins statement's period line
+ * ("Pour la période du 1er janvier au 31 janvier 2026" — S4). Real, low-risk: full
+ * names don't vary by regional abbreviation convention the way `JAN`/`JANV`/`JANV.`
+ * would.
+ */
+export const FRENCH_MONTH_NAMES: Readonly<Record<string, number>> = {
+  janvier: 1,
+  février: 2,
+  mars: 3,
+  avril: 4,
+  mai: 5,
+  juin: 6,
+  juillet: 7,
+  août: 8,
+  septembre: 9,
+  octobre: 10,
+  novembre: 11,
+  décembre: 12,
+};
+
+/**
+ * `D MON` -> `CalendarDate`, given the year. Pure and year-agnostic, matching
+ * `parseDeclaredDate`'s split of concerns: this function only knows the shape of
+ * one date; which calendar year a `D MON` value belongs to is business logic that
+ * belongs to the statement source that owns the period line (a Desjardins PDF names
+ * no year on the row itself — see `desjardins-pdf.ts`).
+ */
+export function parseFrenchDayMonth(raw: string, year: number): CalendarDate | null {
+  const text = raw.trim().toUpperCase();
+  const m = /^(\d{1,2})\s+(\p{Lu}+)$/u.exec(text);
+  if (m === null) return null;
+
+  const day = m[1]!;
+  const month = FRENCH_MONTH_ABBREVIATIONS[m[2]!];
+  if (month === undefined) return null;
+
+  const iso = `${String(year).padStart(4, "0")}-${String(month).padStart(2, "0")}-${day.padStart(2, "0")}`;
+  return isCalendarDate(iso) ? iso : null;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { parseDeclaredDate, parseOfxDate } from "../src/dates.ts";
+import { parseDeclaredDate, parseFrenchDayMonth, parseOfxDate } from "../src/dates.ts";
 import { calendarDate, isCalendarDate } from "../src/types.ts";
 
 describe("isCalendarDate", () => {
@@ -68,5 +68,51 @@ describe("parseOfxDate", () => {
     expect(parseOfxDate("2026")).toBeNull();
     expect(parseOfxDate("")).toBeNull();
     expect(parseOfxDate("20260230")).toBeNull();
+  });
+});
+
+/**
+ * WP-3: the Desjardins PDF grammar's row date, `D MON`. Only `JAN` is confirmed
+ * against a real statement (`docs/statements/NOTES.md` S4); the rest of the table
+ * is the standard Québec 3-letter scheme and pinned here so a future real sample
+ * either confirms or corrects it.
+ */
+describe("parseFrenchDayMonth", () => {
+  test("reads every month abbreviation", () => {
+    expect(parseFrenchDayMonth("1 JAN", 2026)).toBe(calendarDate("2026-01-01"));
+    expect(parseFrenchDayMonth("1 FÉV", 2026)).toBe(calendarDate("2026-02-01"));
+    expect(parseFrenchDayMonth("1 MAR", 2026)).toBe(calendarDate("2026-03-01"));
+    expect(parseFrenchDayMonth("1 AVR", 2026)).toBe(calendarDate("2026-04-01"));
+    expect(parseFrenchDayMonth("1 MAI", 2026)).toBe(calendarDate("2026-05-01"));
+    expect(parseFrenchDayMonth("1 JUN", 2026)).toBe(calendarDate("2026-06-01"));
+    expect(parseFrenchDayMonth("1 JUL", 2026)).toBe(calendarDate("2026-07-01"));
+    expect(parseFrenchDayMonth("1 AOU", 2026)).toBe(calendarDate("2026-08-01"));
+    expect(parseFrenchDayMonth("1 AOÛT", 2026)).toBe(calendarDate("2026-08-01"));
+    expect(parseFrenchDayMonth("1 SEP", 2026)).toBe(calendarDate("2026-09-01"));
+    expect(parseFrenchDayMonth("1 OCT", 2026)).toBe(calendarDate("2026-10-01"));
+    expect(parseFrenchDayMonth("1 NOV", 2026)).toBe(calendarDate("2026-11-01"));
+    expect(parseFrenchDayMonth("1 DEC", 2026)).toBe(calendarDate("2026-12-01"));
+    expect(parseFrenchDayMonth("1 DÉC", 2026)).toBe(calendarDate("2026-12-01"));
+  });
+
+  test("reads a real-sample-shaped single-digit day and is case-insensitive on input", () => {
+    expect(parseFrenchDayMonth("1 JAN", 2026)).toBe(calendarDate("2026-01-01"));
+    expect(parseFrenchDayMonth("1 jan", 2026)).toBe(calendarDate("2026-01-01"));
+    expect(parseFrenchDayMonth("15 JAN", 2026)).toBe(calendarDate("2026-01-15"));
+  });
+
+  test("rejects an unknown month, wrong shape, and an impossible day", () => {
+    expect(parseFrenchDayMonth("1 XYZ", 2026)).toBeNull();
+    expect(parseFrenchDayMonth("JAN 1", 2026)).toBeNull();
+    expect(parseFrenchDayMonth("2026-01-01", 2026)).toBeNull();
+    expect(parseFrenchDayMonth("32 JAN", 2026)).toBeNull();
+    expect(parseFrenchDayMonth("30 FÉV", 2026)).toBeNull();
+  });
+
+  test("never constructs a Date object's worth of timezone risk — pure string arithmetic", () => {
+    // 29 February only exists in a leap year; this is the same "computed, not guessed"
+    // rule `isCalendarDate` already enforces, exercised through the French path too.
+    expect(parseFrenchDayMonth("29 FÉV", 2024)).toBe(calendarDate("2024-02-29"));
+    expect(parseFrenchDayMonth("29 FÉV", 2026)).toBeNull();
   });
 });

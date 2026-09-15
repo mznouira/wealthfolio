@@ -199,7 +199,13 @@ export type ImportProblemCode =
   // Importing these anyway would put a USD amount in a CAD account, and the schema
   // cannot catch it because `USD` is a valid currency code. Rejected, never converted:
   // an ad-hoc conversion here would bypass `fx_rate` entirely (AGENTS.md).
-  | "currency_mismatch";
+  | "currency_mismatch"
+  // D5 (docs/statements/PLAN.md §3): a source that groups lines into independent
+  // balance chains (a positioned-text table, unlike a flat CSV/OFX record stream)
+  // must assert `opening + Σ(± lines) = closing` per chain and reject, never warn,
+  // when it doesn't. Generic on purpose — WP-3 is the first source to raise it, but
+  // it names a property of the check, not of any one institution.
+  | "reconciliation_failed";
 
 export interface ImportProblem {
   readonly at: SourceLocation;
@@ -212,7 +218,7 @@ export interface ImportProblem {
 // The seam
 // ---------------------------------------------------------------------------
 
-export type SourceFormat = "csv" | "ofx";
+export type SourceFormat = "csv" | "ofx" | "pdf";
 
 export interface FetchRequest {
   /** Restrict to one account within a multi-account export. Masked form, as parsed. */
