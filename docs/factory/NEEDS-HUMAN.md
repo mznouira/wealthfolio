@@ -24,7 +24,7 @@ Rules:
 
 ## Open
 
-(none yet)
+- [smoke test] scheduler pipeline exercised successfully on Tue Sep 15 02:46:19 UTC 2026.
 
 ---
 
