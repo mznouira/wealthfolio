@@ -175,12 +175,27 @@ async function needsHumanDiff(worktree) {
   }
 }
 
+// gh issue edit --add-label fails outright if the label doesn't exist yet, so
+// create it on demand. --force makes creation idempotent against a label
+// that already exists.
+async function ensureLabel(name) {
+  await exec("gh", [
+    "label",
+    "create",
+    name,
+    "--force",
+    "--description",
+    "Agent factory: PR already opened for this issue",
+    "--color",
+    "5319E7",
+  ]).catch(() => {});
+}
+
 async function runIssue(issue, opts, ctx) {
-  const branch = `agent/${ctx.engine}/issue-${issue.number}`;
   const name = `${ctx.engine}-issue-${issue.number}`;
 
   if (opts.dryRun) {
-    console.log(`[dry-run] #${issue.number} ${issue.title} -> worktree ${name} (${branch})`);
+    console.log(`[dry-run] #${issue.number} ${issue.title} -> worktree ${name}`);
     return;
   }
 
@@ -190,7 +205,9 @@ async function runIssue(issue, opts, ctx) {
     { cwd: ctx.root },
   );
   const worktree = (created.stdout.match(/^worktree:\s*(.+)$/m) || [])[1];
+  const branch = (created.stdout.match(/^branch:\s*(.+)$/m) || [])[1];
   if (!worktree) throw new Error(`could not determine worktree path for #${issue.number}`);
+  if (!branch) throw new Error(`could not determine branch name for #${issue.number}`);
 
   const dir = mkdtempSync(join(tmpdir(), `${ctx.engine}-issue-`));
   const promptFile = join(dir, "prompt.md");
@@ -244,6 +261,7 @@ async function runIssue(issue, opts, ctx) {
         { cwd: worktree },
       );
       console.log(`[#${issue.number}] PR: ${prUrl.trim()}`);
+      await ensureLabel(`${opts.label}:pr`);
       await exec("gh", [
         "issue",
         "edit",
