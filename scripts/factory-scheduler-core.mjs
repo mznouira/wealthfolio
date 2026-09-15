@@ -113,11 +113,29 @@ for how manual-test items surface instead of blocking a run.`;
 
 const hasLabel = (issue, name) => (issue.labels || []).some((label) => label.name === name);
 
-async function listIssues(label, limit) {
+// `gh` resolves its "current repository" ambiguously when a fork has both
+// `origin` (the fork) and `upstream` (the parent) remotes — it can default to
+// the parent. That's wrong for unattended runs: we must never poll issues or
+// open PRs against a repo the user doesn't control. Resolve `origin`
+// ourselves and pass -R explicitly to every gh call instead of trusting gh's
+// default.
+async function resolveRepo(root) {
+  const { stdout } = await exec("git", ["remote", "get-url", "origin"], { cwd: root });
+  const url = stdout.trim();
+  const match = url.match(/github\.com[:/]([^/]+)\/(.+?)(\.git)?$/);
+  if (!match) {
+    throw new Error(`could not parse a GitHub owner/repo from origin remote: ${url}`);
+  }
+  return `${match[1]}/${match[2]}`;
+}
+
+async function listIssues(label, limit, repo) {
   try {
     const { stdout } = await exec("gh", [
       "issue",
       "list",
+      "-R",
+      repo,
       "--label",
       label,
       "--state",
@@ -178,11 +196,13 @@ async function needsHumanDiff(worktree) {
 // gh issue edit --add-label fails outright if the label doesn't exist yet, so
 // create it on demand. --force makes creation idempotent against a label
 // that already exists.
-async function ensureLabel(name) {
+async function ensureLabel(name, repo) {
   await exec("gh", [
     "label",
     "create",
     name,
+    "-R",
+    repo,
     "--force",
     "--description",
     "Agent factory: PR already opened for this issue",
@@ -249,6 +269,8 @@ async function runIssue(issue, opts, ctx) {
         [
           "pr",
           "create",
+          "-R",
+          ctx.repo,
           "--head",
           branch,
           "--base",
@@ -261,11 +283,13 @@ async function runIssue(issue, opts, ctx) {
         { cwd: worktree },
       );
       console.log(`[#${issue.number}] PR: ${prUrl.trim()}`);
-      await ensureLabel(`${opts.label}:pr`);
+      await ensureLabel(`${opts.label}:pr`, ctx.repo);
       await exec("gh", [
         "issue",
         "edit",
         String(issue.number),
+        "-R",
+        ctx.repo,
         "--add-label",
         `${opts.label}:pr`,
       ]).catch(() => {});
@@ -274,6 +298,8 @@ async function runIssue(issue, opts, ctx) {
         "issue",
         "comment",
         String(issue.number),
+        "-R",
+        ctx.repo,
         "--body",
         summary.trim() + humanNote,
       ]);
@@ -289,7 +315,7 @@ async function runIssue(issue, opts, ctx) {
 }
 
 async function pass(opts, ctx) {
-  const issues = await listIssues(opts.label, opts.limit);
+  const issues = await listIssues(opts.label, opts.limit, ctx.repo);
   const pending = issues.filter(
     (issue) => !hasLabel(issue, `${opts.label}:pr`) && !hasLabel(issue, `${opts.label}:skip`),
   );
@@ -316,6 +342,10 @@ export async function runScheduler(opts, ctx) {
     console.error("error: --interval must be a non-negative number");
     process.exit(2);
   }
+
+  const repo = await resolveRepo(ctx.root);
+  console.log(`[factory] targeting repo: ${repo}`);
+  ctx = { ...ctx, repo };
 
   do {
     await pass(opts, ctx);
