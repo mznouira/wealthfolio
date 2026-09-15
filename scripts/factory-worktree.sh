@@ -80,8 +80,27 @@ case "$cmd" in
     branch="agent/$slug"
 
     if [ -e "$dir" ]; then
-      echo "error: worktree already exists: $dir" >&2
-      exit 1
+      # A prior run may have been killed/crashed before its cleanup ran,
+      # leaving a registered worktree behind that jams this name on every
+      # later pass. Reclaim it automatically, but only if it's provably safe:
+      # a real worktree of this repo, no uncommitted changes, and no commits
+      # ahead of $from that would otherwise be lost.
+      reclaimed=0
+      if git -C "$repo_root" worktree list --porcelain | grep -qx "worktree $dir"; then
+        dirty="$(git -C "$dir" status --porcelain 2>/dev/null)"
+        ahead="$(git -C "$repo_root" rev-list --count "$from..$branch" 2>/dev/null || true)"
+        if [ -z "$dirty" ] && [ "$ahead" = "0" ]; then
+          echo "reclaiming stale worktree (clean, no commits ahead of $from): $dir" >&2
+          git -C "$repo_root" worktree remove --force "$dir"
+          git -C "$repo_root" branch -D "$branch" >/dev/null 2>&1 || true
+          reclaimed=1
+        fi
+      fi
+      if [ "$reclaimed" = "0" ]; then
+        echo "error: worktree already exists and is not safe to auto-reclaim: $dir" >&2
+        echo "       (dirty changes and/or commits not on $from — inspect and remove manually)" >&2
+        exit 1
+      fi
     fi
 
     mkdir -p "$worktrees_dir"
